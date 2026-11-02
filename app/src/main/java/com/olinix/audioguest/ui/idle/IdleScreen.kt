@@ -29,21 +29,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
 import com.olinix.audioguest.session.EventInfo
+import com.olinix.audioguest.ui.components.screenBackground
 import com.olinix.audioguest.ui.theme.AudioGuestTheme
-import com.olinix.audioguest.ui.theme.Charcoal
-import com.olinix.audioguest.ui.theme.CharcoalWarm
 import com.olinix.audioguest.ui.theme.Ivory
 import com.olinix.audioguest.ui.theme.IvorySoft
 import com.olinix.audioguest.ui.theme.Sand
@@ -62,16 +60,7 @@ fun IdleScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .drawBehind {
-                drawRect(
-                    Brush.radialGradient(
-                        0f to CharcoalWarm,
-                        0.62f to Charcoal,
-                        center = Offset(size.width / 2, 0f),
-                        radius = size.height * 1.2f,
-                    )
-                )
-            }
+            .screenBackground()
             .clickable(interactionSource = null, indication = null, onClick = onTap),
     ) {
         // Giant handset silhouette as a watermark.
@@ -81,69 +70,53 @@ fun IdleScreen(
             tint = accent.copy(alpha = 0.05f),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .offset(x = 150.dp, y = 190.dp)
-                .size(640.dp)
+                .offset(x = 230.dp, y = 170.dp)
+                .size(720.dp)
                 .rotate(-16f),
         )
 
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 96.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(40.dp),
+                .padding(start = 64.dp, end = 64.dp, top = 128.dp, bottom = 104.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            EventHeadline(event = event, accent = accent, modifier = Modifier.weight(1.15f))
-
-            Column(
-                modifier = Modifier.weight(0.85f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(72.dp),
-            ) {
-                PulsingPhone(accent = accent)
-                TapHint(accent = accent)
-            }
+            EventHeadline(event = event, accent = accent)
+            PulsingPhone(accent = accent)
+            Invitation(accent = accent)
         }
     }
 }
 
 @Composable
-private fun EventHeadline(event: EventInfo, accent: Color, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
+private fun EventHeadline(event: EventInfo, accent: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = event.date.uppercase(),
             style = MaterialTheme.typography.labelLarge,
             color = accent,
         )
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(40.dp))
         Text(
             text = event.label,
             style = MaterialTheme.typography.headlineMedium,
             color = Taupe,
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(10.dp))
         Text(
             text = event.hosts,
             style = MaterialTheme.typography.displayLarge,
+            fontSize = 108.sp,
+            lineHeight = 108.sp,
+            textAlign = TextAlign.Center,
             color = Ivory,
         )
         Box(
             Modifier
-                .padding(top = 48.dp, bottom = 40.dp)
+                .padding(top = 48.dp)
                 .size(width = 120.dp, height = 2.dp)
                 .background(accent)
-        )
-        Text(
-            text = stringResource(R.string.idle_title),
-            style = MaterialTheme.typography.displaySmall,
-            color = Ivory,
-            modifier = Modifier.widthIn(max = 600.dp),
-        )
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = stringResource(R.string.idle_subtitle),
-            style = MaterialTheme.typography.bodyLarge,
-            color = Sand,
         )
     }
 }
@@ -159,7 +132,7 @@ private fun PulsingPhone(accent: Color) {
         label = "pulseProgress",
     )
 
-    Box(Modifier.size(240.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(260.dp), contentAlignment = Alignment.Center) {
         repeat(3) { ring ->
             Box(
                 Modifier
@@ -185,9 +158,32 @@ private fun PulsingPhone(accent: Color) {
                 painter = painterResource(R.drawable.ic_phone),
                 contentDescription = null,
                 tint = accent,
-                modifier = Modifier.size(108.dp),
+                modifier = Modifier.size(116.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun Invitation(accent: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = stringResource(R.string.idle_title),
+            style = MaterialTheme.typography.displaySmall,
+            fontSize = 56.sp,
+            lineHeight = 59.sp,
+            textAlign = TextAlign.Center,
+            color = Ivory,
+            modifier = Modifier.widthIn(max = 620.dp),
+        )
+        Spacer(Modifier.height(18.dp))
+        Text(
+            text = stringResource(R.string.idle_subtitle),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Sand,
+        )
+        Spacer(Modifier.height(48.dp))
+        TapHint(accent = accent)
     }
 }
 
@@ -202,9 +198,9 @@ private fun TapHint(accent: Color) {
 
     Row(
         modifier = Modifier
-            .height(64.dp)
-            .border(1.5.dp, Ivory.copy(alpha = 0.2f), RoundedCornerShape(32.dp))
-            .padding(horizontal = 32.dp),
+            .height(68.dp)
+            .border(1.5.dp, Ivory.copy(alpha = 0.2f), RoundedCornerShape(percent = 50))
+            .padding(horizontal = 34.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -222,7 +218,7 @@ private fun TapHint(accent: Color) {
     }
 }
 
-@Preview(widthDp = 1280, heightDp = 800)
+@Preview(widthDp = 800, heightDp = 1280)
 @Composable
 private fun IdleScreenPreview() {
     AudioGuestTheme {
