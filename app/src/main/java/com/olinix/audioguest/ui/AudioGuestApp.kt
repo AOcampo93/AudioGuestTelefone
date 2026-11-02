@@ -1,6 +1,7 @@
 package com.olinix.audioguest.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.camera.core.SurfaceRequest
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -16,6 +17,8 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.olinix.audioguest.camera.CameraFeed
+import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.SessionConfig
 import com.olinix.audioguest.session.SessionState
@@ -30,10 +33,20 @@ import com.olinix.audioguest.ui.recording.RecordingScreen
 import com.olinix.audioguest.ui.review.ReviewScreen
 import com.olinix.audioguest.ui.saved.SavedScreen
 import com.olinix.audioguest.ui.theme.Charcoal
+import kotlinx.coroutines.flow.StateFlow
 
-/** Root of the kiosk: picks the screen for the current session state. */
+/**
+ * Root of the kiosk: picks the screen for the current session state.
+ *
+ * @param cameraPreview live front-camera image, shown behind the video countdown and recording.
+ */
 @Composable
-fun AudioGuestApp(viewModel: SessionViewModel, event: EventInfo, config: SessionConfig) {
+fun AudioGuestApp(
+    viewModel: SessionViewModel,
+    cameraPreview: StateFlow<SurfaceRequest?>,
+    event: EventInfo,
+    config: SessionConfig,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recordings by viewModel.recordings.collectAsStateWithLifecycle()
 
@@ -54,6 +67,10 @@ fun AudioGuestApp(viewModel: SessionViewModel, event: EventInfo, config: Session
                 }
             },
     ) {
+        // A single viewfinder lives under both video screens, so the image does not restart
+        // when the countdown turns into the recording.
+        if (state.showsCamera()) CameraFeed(cameraPreview, Modifier.fillMaxSize())
+
         AnimatedContent(
             targetState = state,
             // Ticks inside the same screen (3 → 2, 0:41 → 0:42) must not trigger a cross-fade.
@@ -107,4 +124,10 @@ fun AudioGuestApp(viewModel: SessionViewModel, event: EventInfo, config: Session
             }
         }
     }
+}
+
+private fun SessionState.showsCamera(): Boolean = when (this) {
+    is SessionState.Countdown -> mode == RecordingMode.VIDEO
+    is SessionState.Capturing -> mode == RecordingMode.VIDEO
+    else -> false
 }

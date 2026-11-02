@@ -32,6 +32,7 @@ fun ErrorScreen(reason: ErrorReason, onBack: () -> Unit, modifier: Modifier = Mo
     val message = stringResource(
         when (reason) {
             ErrorReason.MICROPHONE_UNAVAILABLE -> R.string.error_microphone
+            ErrorReason.CAMERA_UNAVAILABLE -> R.string.error_camera
             ErrorReason.RECORDING_FAILED -> R.string.error_recording
         }
     )

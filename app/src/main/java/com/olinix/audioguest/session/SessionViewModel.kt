@@ -10,6 +10,7 @@ import com.olinix.audioguest.lights.LightController
 import com.olinix.audioguest.lights.LightScene
 import com.olinix.audioguest.lights.lightSceneFor
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,7 +26,8 @@ import java.io.File
  */
 class SessionViewModel(
     private val lights: LightController,
-    private val recorder: MessageRecorder,
+    private val voiceRecorder: MessageRecorder,
+    private val videoRecorder: MessageRecorder,
     private val files: RecordingFiles,
     private val repository: RecordingRepository,
     private val config: SessionConfig = SessionConfig(),
@@ -98,15 +100,16 @@ class SessionViewModel(
     /** The guest pressed "Terminar" before the time ran out. */
     fun finishRecording() {
         val capturing = _state.value as? SessionState.Capturing ?: return
-        timerJob?.cancel()
-        stopCapture(capturing.mode, capturing.elapsedSeconds)
+        // A second tap while the file is being finished changes nothing.
+        if (capturingFile == null) return
+        runTimer { stopCapture(capturing.mode, capturing.elapsedSeconds) }
     }
 
     fun save() {
         val review = _state.value as? SessionState.Review ?: return
-        val kept = review.file?.let(files::keep)
+        val kept = files.keep(review.file)
         runTimer {
-            if (kept != null) repository.add(review.mode, kept, review.durationSeconds)
+            repository.add(review.mode, kept, review.durationSeconds)
             for (left in config.savedSeconds downTo 1) {
                 moveTo(SessionState.Saved(secondsLeft = left, totalSeconds = config.savedSeconds))
                 delay(ONE_SECOND)
@@ -140,31 +143,47 @@ class SessionViewModel(
     }
 
     /** Live microphone loudness (0..1) for the recording wave. */
-    fun inputLevel(): Float = recorder.level()
+    fun inputLevel(): Float {
+        val capturing = _state.value as? SessionState.Capturing ?: return 0f
+        return recorderFor(capturing.mode).level()
+    }
 
     override fun onCleared() {
-        recorder.cancel()
-    }
-
-    private fun startCountdown(mode: RecordingMode) = runTimer {
-        // 3, 2, 1 and then 0, which the screen shows as "¡Ahora!".
-        for (number in config.countdownFrom downTo 0) {
-            moveTo(SessionState.Countdown(mode, number))
-            delay(ONE_SECOND)
+        for (recorder in listOf(voiceRecorder, videoRecorder)) {
+            recorder.cancel()
+            recorder.release()
         }
-        record(mode)
     }
 
-    private suspend fun record(mode: RecordingMode) {
-        // Video is still simulated: the camera arrives in phase 4.
-        if (mode == RecordingMode.AUDIO) {
-            val file = files.newPending(mode)
-            if (!recorder.start(file)) {
-                moveTo(SessionState.Error(ErrorReason.MICROPHONE_UNAVAILABLE))
-                return
+    private fun recorderFor(mode: RecordingMode): MessageRecorder = when (mode) {
+        RecordingMode.AUDIO -> voiceRecorder
+        RecordingMode.VIDEO -> videoRecorder
+    }
+
+    private fun startCountdown(mode: RecordingMode) {
+        // The camera takes a moment to open, so it starts now and its preview shows behind the numbers.
+        val ready = viewModelScope.async { recorderFor(mode).prepare() }
+        runTimer {
+            // 3, 2, 1 and then 0, which the screen shows as "¡Ahora!".
+            for (number in config.countdownFrom downTo 0) {
+                moveTo(SessionState.Countdown(mode, number))
+                delay(ONE_SECOND)
             }
-            capturingFile = file
+            record(mode, ready.await())
         }
+    }
+
+    private suspend fun record(mode: RecordingMode, ready: Boolean) {
+        val recorder = recorderFor(mode)
+        val file = files.newPending(mode)
+        if (!ready || !recorder.start(file)) {
+            files.discard(file)
+            recorder.release()
+            val reason = if (mode == RecordingMode.VIDEO) ErrorReason.CAMERA_UNAVAILABLE else ErrorReason.MICROPHONE_UNAVAILABLE
+            moveTo(SessionState.Error(reason))
+            return
+        }
+        capturingFile = file
 
         val maxSeconds = config.maxSecondsFor(mode)
         for (elapsed in 0 until maxSeconds) {
@@ -175,10 +194,13 @@ class SessionViewModel(
         stopCapture(mode, maxSeconds)
     }
 
-    private fun stopCapture(mode: RecordingMode, seconds: Int) {
-        val file = capturingFile
+    private suspend fun stopCapture(mode: RecordingMode, seconds: Int) {
+        val file = capturingFile ?: return
         capturingFile = null
-        if (file != null && !recorder.stop()) {
+        val recorder = recorderFor(mode)
+        val complete = recorder.stop()
+        recorder.release()
+        if (!complete) {
             files.discard(file)
             moveTo(SessionState.Error(ErrorReason.RECORDING_FAILED))
             return

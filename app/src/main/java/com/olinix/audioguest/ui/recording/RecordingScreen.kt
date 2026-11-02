@@ -37,6 +37,7 @@ import com.olinix.audioguest.R
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionState
 import com.olinix.audioguest.ui.components.CameraBackdrop
+import com.olinix.audioguest.ui.components.CameraShade
 import com.olinix.audioguest.ui.components.LastSecondsBanner
 import com.olinix.audioguest.ui.components.LookHereTab
 import com.olinix.audioguest.ui.components.PillButton
@@ -187,8 +188,9 @@ private fun VideoRecording(
     modifier: Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    // See-through: the live camera image is drawn underneath by the app root.
     Box(modifier.fillMaxSize()) {
-        CameraBackdrop()
+        CameraShade()
         ViewfinderCorners()
         LookHereTab(Modifier.align(CameraTabAlignment), light = false)
 
@@ -324,6 +326,11 @@ private fun VoiceRecordingPreview() {
 @Preview(widthDp = 800, heightDp = 1280)
 @Composable
 private fun VideoRecordingPreview() {
-    AudioGuestTheme { RecordingScreen(SessionState.Capturing(RecordingMode.VIDEO, 42, 120), onFinish = {}) }
+    AudioGuestTheme {
+        Box {
+            CameraBackdrop()
+            RecordingScreen(SessionState.Capturing(RecordingMode.VIDEO, 42, 120), onFinish = {})
+        }
+    }
 }
 

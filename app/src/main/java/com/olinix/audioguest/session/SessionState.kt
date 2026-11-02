@@ -6,7 +6,7 @@ import java.io.File
 enum class RecordingMode { AUDIO, VIDEO }
 
 /** Why a session ended on the error screen. */
-enum class ErrorReason { MICROPHONE_UNAVAILABLE, RECORDING_FAILED }
+enum class ErrorReason { MICROPHONE_UNAVAILABLE, CAMERA_UNAVAILABLE, RECORDING_FAILED }
 
 /**
  * Every possible moment of a guest session.
@@ -33,11 +33,8 @@ sealed class SessionState {
         val progress: Float get() = elapsedSeconds.toFloat() / maxSeconds
     }
 
-    /**
-     * Play back before saving: Save · Retry · Discard.
-     * [file] is null for video until the camera is wired in.
-     */
-    data class Review(val mode: RecordingMode, val durationSeconds: Int, val file: File?) : SessionState()
+    /** Play back before saving: Save · Retry · Discard. [file] is still pending until saved. */
+    data class Review(val mode: RecordingMode, val durationSeconds: Int, val file: File) : SessionState()
 
     /** "¡Gracias!" and automatic return to Idle. */
     data class Saved(val secondsLeft: Int, val totalSeconds: Int) : SessionState()

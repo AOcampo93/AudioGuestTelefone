@@ -25,6 +25,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.audio.VideoFrame
 import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionState
@@ -44,6 +47,7 @@ import com.olinix.audioguest.ui.components.ProgressBar
 import com.olinix.audioguest.ui.components.Waveform
 import com.olinix.audioguest.ui.components.screenBackground
 import com.olinix.audioguest.ui.theme.AudioGuestTheme
+import com.olinix.audioguest.ui.theme.Charcoal
 import com.olinix.audioguest.ui.theme.DialogScrim
 import com.olinix.audioguest.ui.theme.Ivory
 import com.olinix.audioguest.ui.theme.RecordRed
@@ -85,9 +89,10 @@ fun ReviewScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 40.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                when {
-                    isVideo -> VideoPreview(state.durationSeconds)
-                    state.file != null -> VoicePreview(state.file, state.durationSeconds, onPlayingChange)
+                if (isVideo) {
+                    VideoPreview(state.file, state.durationSeconds, onPlayingChange)
+                } else {
+                    VoicePreview(state.file, state.durationSeconds, onPlayingChange)
                 }
             }
 
@@ -160,17 +165,30 @@ private fun VoicePreview(file: File, durationSeconds: Int, onPlayingChange: (Boo
     }
 }
 
-/** Video preview: dark frame with a centered play button and a seek bar. Playback arrives with the camera. */
+/** Video preview: the recording itself, played on screen. A tap anywhere on it plays or pauses. */
 @Composable
-private fun VideoPreview(durationSeconds: Int) {
+private fun VideoPreview(file: File, durationSeconds: Int, onPlayingChange: (Boolean) -> Unit) {
+    val playback = rememberPlayback(file, onPlayingChange = onPlayingChange)
     Box(
         Modifier
             .fillMaxWidth()
             .height(640.dp)
-            .clip(RoundedCornerShape(28.dp)),
+            .clip(RoundedCornerShape(28.dp))
+            .clickable(onClick = playback::toggle),
     ) {
         CameraBackdrop()
-        AccentCircle(icon = R.drawable.ic_play, size = 132.dp, iconSize = 52.dp, modifier = Modifier.align(Alignment.Center))
+        VideoFrame(playback, Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to Charcoal.copy(alpha = 0.85f))))
+        // The big button only shows while paused, so it never covers the guest's face.
+        if (!playback.isPlaying) {
+            AccentCircle(
+                icon = R.drawable.ic_play,
+                size = 132.dp,
+                iconSize = 52.dp,
+                contentDescription = stringResource(R.string.play),
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -179,8 +197,15 @@ private fun VideoPreview(durationSeconds: Int) {
             horizontalArrangement = Arrangement.spacedBy(18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(formatDuration(0), fontSize = 22.sp, color = Ivory, style = MaterialTheme.typography.bodyMedium)
-            ProgressBar(progress = 0f, color = MaterialTheme.colorScheme.primary, height = 8.dp, track = Ivory.copy(alpha = 0.25f), modifier = Modifier.weight(1f))
+            Text(formatDuration((playback.positionMs / 1000).toInt()), fontSize = 22.sp, color = Ivory, style = MaterialTheme.typography.bodyMedium)
+            ProgressBar(
+                progress = playback.progress,
+                color = MaterialTheme.colorScheme.primary,
+                height = 8.dp,
+                track = Ivory.copy(alpha = 0.25f),
+                glide = false,
+                modifier = Modifier.weight(1f),
+            )
             Text(formatDuration(durationSeconds), fontSize = 22.sp, color = Ivory, style = MaterialTheme.typography.bodyMedium)
         }
     }
@@ -258,5 +283,5 @@ private fun DiscardDialog(onKeep: () -> Unit, onDiscard: () -> Unit) {
 @Preview(widthDp = 800, heightDp = 1280)
 @Composable
 private fun ReviewPreview() {
-    AudioGuestTheme { ReviewScreen(SessionState.Review(RecordingMode.VIDEO, 52, file = null), onSave = {}, onRetry = {}, onDiscard = {}, onPlayingChange = {}) }
+    AudioGuestTheme { ReviewScreen(SessionState.Review(RecordingMode.AUDIO, 52, File("")), onSave = {}, onRetry = {}, onDiscard = {}, onPlayingChange = {}) }
 }

@@ -11,15 +11,8 @@ abstract class AudioGuestDatabase : RoomDatabase() {
     abstract fun recordings(): RecordingDao
 
     companion object {
-        @Volatile
-        private var instance: AudioGuestDatabase? = null
-
-        /** One database for the whole app, opened on first use. */
-        fun get(context: Context): AudioGuestDatabase =
-            instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(context.applicationContext, AudioGuestDatabase::class.java, "audioguest.db")
-                    .build()
-                    .also { instance = it }
-            }
+        /** Opens the database file. The app keeps a single instance in [com.olinix.audioguest.AudioGuestApplication]. */
+        fun open(context: Context): AudioGuestDatabase =
+            Room.databaseBuilder(context, AudioGuestDatabase::class.java, "audioguest.db").build()
     }
 }

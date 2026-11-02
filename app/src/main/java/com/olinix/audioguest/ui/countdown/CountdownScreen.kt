@@ -44,6 +44,7 @@ import com.olinix.audioguest.R
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionState
 import com.olinix.audioguest.ui.components.CameraBackdrop
+import com.olinix.audioguest.ui.components.CameraShade
 import com.olinix.audioguest.ui.components.InfoChip
 import com.olinix.audioguest.ui.components.LookHereTab
 import com.olinix.audioguest.ui.components.screenBackground
@@ -54,14 +55,17 @@ import com.olinix.audioguest.ui.theme.IvorySoft
 /** Vertical position of the front camera on the Tab M11 held in portrait (18% from the top). */
 val CameraTabAlignment = BiasAlignment(horizontalBias = 1f, verticalBias = -0.64f)
 
-/** Screen 4 · Full-screen 3, 2, 1 and "¡Ahora!". The recording starts by itself afterwards. */
+/**
+ * Screen 4 · Full-screen 3, 2, 1 and "¡Ahora!". The recording starts by itself afterwards.
+ * For video the screen is see-through: the camera preview runs underneath, darkened.
+ */
 @Composable
 fun CountdownScreen(state: SessionState.Countdown, modifier: Modifier = Modifier) {
     val isVideo = state.mode == RecordingMode.VIDEO
 
-    Box(modifier.fillMaxSize().screenBackground()) {
+    Box(modifier.fillMaxSize().then(if (isVideo) Modifier else Modifier.screenBackground())) {
         if (isVideo) {
-            CameraBackdrop(dimmed = true)
+            CameraShade(dimmed = true)
             LookHereTab(Modifier.align(CameraTabAlignment))
         }
 
@@ -183,5 +187,10 @@ private fun BoxScope.Now() {
 @Preview(widthDp = 800, heightDp = 1280)
 @Composable
 private fun CountdownPreview() {
-    AudioGuestTheme { CountdownScreen(SessionState.Countdown(RecordingMode.VIDEO, 2)) }
+    AudioGuestTheme {
+        Box {
+            CameraBackdrop()
+            CountdownScreen(SessionState.Countdown(RecordingMode.VIDEO, 2))
+        }
+    }
 }

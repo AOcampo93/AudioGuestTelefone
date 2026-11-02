@@ -29,7 +29,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -185,13 +187,29 @@ fun ProgressBar(
     }
 }
 
-/** Stand-in for the live front-camera image until the camera is wired in (phase 4). */
+/** Dark placeholder where a camera image or a video is about to appear. */
 @Composable
-fun CameraBackdrop(modifier: Modifier = Modifier, dimmed: Boolean = false) {
-    Box(
-        modifier
-            .fillMaxSize()
-            .background(Color(0xFF3B3028))
-            .background(Charcoal.copy(alpha = if (dimmed) 0.74f else 0.3f))
-    )
+fun CameraBackdrop(modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxSize().background(CameraPlaceholder))
 }
+
+/**
+ * Darkens the live camera image so the text on top stays readable: evenly during the
+ * countdown ([dimmed]), and only along the top and bottom edges while recording.
+ */
+@Composable
+fun CameraShade(modifier: Modifier = Modifier, dimmed: Boolean = false) {
+    val shade = if (dimmed) {
+        SolidColor(Charcoal.copy(alpha = 0.74f))
+    } else {
+        Brush.verticalGradient(
+            0f to Charcoal.copy(alpha = 0.6f),
+            0.16f to Color.Transparent,
+            0.66f to Color.Transparent,
+            1f to Charcoal.copy(alpha = 0.8f),
+        )
+    }
+    Box(modifier.fillMaxSize().background(shade))
+}
+
+private val CameraPlaceholder = Color(0xFF302620)
