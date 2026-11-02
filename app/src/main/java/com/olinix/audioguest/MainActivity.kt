@@ -3,15 +3,20 @@ package com.olinix.audioguest
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.olinix.audioguest.audio.Handset
 import com.olinix.audioguest.audio.HandsetAudioRecorder
 import com.olinix.audioguest.audio.RecordingFiles
 import com.olinix.audioguest.data.LocalRecordingRepository
@@ -24,7 +29,28 @@ import com.olinix.audioguest.ui.theme.AudioGuestTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val config = SessionConfig()
+    private val config by lazy {
+        // For the emulator only: `adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset false`
+        SessionConfig(requireHandset = intent.getBooleanExtra(EXTRA_REQUIRE_HANDSET, true))
+    }
+
+    private val session: SessionViewModel by viewModels {
+        viewModelFactory {
+            initializer {
+                val app = application as AudioGuestApplication
+                SessionViewModel(
+                    // MVP without an LED strip. Switching to WLED only changes this line.
+                    lights = NoOpLightController(),
+                    voiceRecorder = HandsetAudioRecorder(applicationContext),
+                    videoRecorder = app.camera,
+                    files = RecordingFiles(filesDir),
+                    repository = LocalRecordingRepository(app.database.recordings()),
+                    handsetConnected = Handset.connection(applicationContext),
+                    config = config,
+                )
+            }
+        }
+    }
 
     // The host grants this once while setting up the tablet, so guests never see the dialog.
     private val requestPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
@@ -36,24 +62,27 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         askForMissingPermissions()
 
-        val app = application as AudioGuestApplication
+        val camera = (application as AudioGuestApplication).camera
         setContent {
             AudioGuestTheme {
-                val session = viewModel {
-                    SessionViewModel(
-                        // MVP without an LED strip. Switching to WLED only changes this line.
-                        lights = NoOpLightController(),
-                        voiceRecorder = HandsetAudioRecorder(applicationContext),
-                        videoRecorder = app.camera,
-                        files = RecordingFiles(filesDir),
-                        repository = LocalRecordingRepository(app.database.recordings()),
-                        config = config,
-                    )
-                }
-                AudioGuestApp(viewModel = session, cameraPreview = app.camera.preview, event = EventInfo.Sample, config = config)
+                AudioGuestApp(viewModel = session, cameraPreview = camera.preview, event = EventInfo.Sample, config = config)
             }
         }
     }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        // Logged so the first test with the handset shows which key its button sends.
+        if (event.device?.isExternal == true) Log.i(TAG, "Key ${KeyEvent.keyCodeToString(keyCode)} from ${event.device.name}")
+        if (keyCode in HANDSET_BUTTONS) {
+            if (event.repeatCount == 0) session.onHandsetButton()
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    // Consumed on release too, or Android would pass the button on to a music app.
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
+        keyCode in HANDSET_BUTTONS || super.onKeyUp(keyCode, event)
 
     private fun askForMissingPermissions() {
         val missing = REQUIRED_PERMISSIONS.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
@@ -69,6 +98,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
+        const val TAG = "Handset"
+        const val EXTRA_REQUIRE_HANDSET = "require_handset"
         val REQUIRED_PERMISSIONS = listOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA)
+
+        /** Keys a handset's answer button may send: the classic headset hook, or play/pause. */
+        val HANDSET_BUTTONS = setOf(KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY)
     }
 }

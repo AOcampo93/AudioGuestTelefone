@@ -3,6 +3,7 @@ package com.olinix.audioguest.ui
 import androidx.activity.compose.BackHandler
 import androidx.camera.core.SurfaceRequest
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,9 +14,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.olinix.audioguest.camera.CameraFeed
 import com.olinix.audioguest.session.RecordingMode
@@ -26,6 +29,7 @@ import com.olinix.audioguest.session.SessionViewModel
 import com.olinix.audioguest.ui.countdown.CountdownScreen
 import com.olinix.audioguest.ui.error.ErrorScreen
 import com.olinix.audioguest.ui.gallery.GalleryScreen
+import com.olinix.audioguest.ui.handset.ConnectHandsetOverlay
 import com.olinix.audioguest.ui.idle.IdleScreen
 import com.olinix.audioguest.ui.menu.MenuScreen
 import com.olinix.audioguest.ui.player.PlayerScreen
@@ -49,6 +53,7 @@ fun AudioGuestApp(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recordings by viewModel.recordings.collectAsStateWithLifecycle()
+    val handsetMissing by viewModel.handsetMissing.collectAsStateWithLifecycle()
 
     // In a kiosk the system back gesture only steps back inside the guest flow.
     BackHandler { viewModel.back() }
@@ -73,6 +78,8 @@ fun AudioGuestApp(
 
         AnimatedContent(
             targetState = state,
+            // The screen underneath the handset warning is blurred, as in the mockup.
+            modifier = if (handsetMissing) Modifier.blur(6.dp) else Modifier,
             // Ticks inside the same screen (3 → 2, 0:41 → 0:42) must not trigger a cross-fade.
             contentKey = { it::class },
             transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(250)) },
@@ -122,6 +129,10 @@ fun AudioGuestApp(
                 )
                 is SessionState.Error -> ErrorScreen(reason = current.reason, onBack = viewModel::back)
             }
+        }
+
+        AnimatedVisibility(visible = handsetMissing, enter = fadeIn(tween(250)), exit = fadeOut(tween(250))) {
+            ConnectHandsetOverlay()
         }
     }
 }

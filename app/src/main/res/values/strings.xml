@@ -78,6 +78,11 @@
     <string name="play">Reproducir</string>
     <string name="pause">Pausar</string>
 
+    <!-- Handset missing -->
+    <string name="handset_connect_title">Conecta el auricular</string>
+    <string name="handset_connect_body">El auricular no está conectado. Avisa al anfitrión para continuar.</string>
+    <string name="handset_waiting">Esperando conexión…</string>
+
     <!-- Error -->
     <string name="error_microphone">No se pudo usar el micrófono</string>
     <string name="error_camera">No se pudo usar la cámara</string>

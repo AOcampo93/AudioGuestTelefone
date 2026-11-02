@@ -14,6 +14,12 @@ The goal of this project is to learn native Android development with Kotlin and 
 - Target device: Lenovo Tab M11 (Android 13), portrait, kiosk-style full screen
 - Hardware: retro USB-C telephone handset (microphone + speaker) through a USB-C hub
 
+The app covers the screen with "Conecta el auricular" until the handset is plugged in. The emulator cannot plug in a USB handset, so start it there with:
+
+```
+adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset false
+```
+
 # Useful Websites
 
 - [Kotlin documentation](https://kotlinlang.org/docs/home.html)

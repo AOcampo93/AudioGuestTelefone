@@ -9,6 +9,11 @@ data class SessionConfig(
     val inactivitySeconds: Int = 30,
     /** How long the "¡Gracias!" screen stays before returning to Idle. */
     val savedSeconds: Int = 5,
+    /**
+     * Without the handset the app shows "Conecta el auricular" and records nothing.
+     * Turned off only on the emulator, which cannot plug in a USB handset.
+     */
+    val requireHandset: Boolean = true,
 ) {
     fun maxSecondsFor(mode: RecordingMode): Int = when (mode) {
         RecordingMode.AUDIO -> maxAudioSeconds

@@ -12,6 +12,7 @@ import com.olinix.audioguest.lights.lightSceneFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +31,8 @@ class SessionViewModel(
     private val videoRecorder: MessageRecorder,
     private val files: RecordingFiles,
     private val repository: RecordingRepository,
+    /** Whether the handset is plugged in, updated as it changes. */
+    handsetConnected: Flow<Boolean>,
     private val config: SessionConfig = SessionConfig(),
 ) : ViewModel() {
 
@@ -39,6 +42,11 @@ class SessionViewModel(
     /** Saved messages, newest first. Loaded right away so the gallery opens already filled. */
     val recordings: StateFlow<List<Recording>> =
         repository.recordings.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val _handsetMissing = MutableStateFlow(false)
+
+    /** True while "Conecta el auricular" must cover the screen. */
+    val handsetMissing: StateFlow<Boolean> = _handsetMissing.asStateFlow()
 
     /** Countdown, recording clock or "¡Gracias!" timer. Only one runs at a time. */
     private var timerJob: Job? = null
@@ -51,14 +59,23 @@ class SessionViewModel(
     /** The file being recorded right now, until it reaches the review screen. */
     private var capturingFile: File? = null
 
+    /** The camera opening during a video countdown. */
+    private var preparing: Job? = null
+
     init {
         files.clearPending()
         moveTo(SessionState.Idle)
+        viewModelScope.launch { handsetConnected.collect(::onHandsetChanged) }
     }
 
     /** Idle → Menu. */
     fun start() {
         if (_state.value == SessionState.Idle) moveTo(SessionState.Menu)
+    }
+
+    /** The button on the handset does what a touch on the screen does: it wakes the invitation. */
+    fun onHandsetButton() {
+        if (_state.value == SessionState.Idle) start() else onUserInteraction()
     }
 
     fun back() {
@@ -163,6 +180,7 @@ class SessionViewModel(
     private fun startCountdown(mode: RecordingMode) {
         // The camera takes a moment to open, so it starts now and its preview shows behind the numbers.
         val ready = viewModelScope.async { recorderFor(mode).prepare() }
+        preparing = ready
         runTimer {
             // 3, 2, 1 and then 0, which the screen shows as "¡Ahora!".
             for (number in config.countdownFrom downTo 0) {
@@ -206,6 +224,32 @@ class SessionViewModel(
             return
         }
         moveTo(SessionState.Review(mode, seconds, file))
+    }
+
+    private fun onHandsetChanged(connected: Boolean) {
+        val missing = !connected && config.requireHandset
+        _handsetMissing.value = missing
+        if (missing) abandonRecording()
+    }
+
+    /**
+     * Without the handset there is nothing to record from, and nobody can press "Terminar"
+     * under the warning. A message being counted down or recorded is dropped and the session restarts.
+     */
+    private fun abandonRecording() {
+        val mode = when (val current = _state.value) {
+            is SessionState.Countdown -> current.mode
+            is SessionState.Capturing -> current.mode
+            else -> return
+        }
+        timerJob?.cancel()
+        preparing?.cancel()
+        val recorder = recorderFor(mode)
+        recorder.cancel()
+        recorder.release()
+        files.discard(capturingFile)
+        capturingFile = null
+        moveTo(SessionState.Idle)
     }
 
     /** Moves through the messages of the current tab and wraps around at either end. */

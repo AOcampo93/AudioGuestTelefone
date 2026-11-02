@@ -73,12 +73,16 @@ class Playback internal constructor(internal val player: ExoPlayer) {
 fun rememberPlayback(file: File, autoPlay: Boolean = false, onPlayingChange: (Boolean) -> Unit = {}): Playback {
     val context = LocalContext.current
     val player = remember(file) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
-            Handset.output(context)?.let(::setPreferredAudioDevice)
-            playWhenReady = autoPlay
-            prepare()
-        }
+        ExoPlayer.Builder(context)
+            // Pause if the handset is unplugged, instead of carrying on through the tablet speakers.
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+            .apply {
+                setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
+                Handset.output(context)?.let(::setPreferredAudioDevice)
+                playWhenReady = autoPlay
+                prepare()
+            }
     }
     val playback = remember(player) { Playback(player) }
     val reportPlaying by rememberUpdatedState(onPlayingChange)

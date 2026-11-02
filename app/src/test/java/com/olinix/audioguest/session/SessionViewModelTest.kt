@@ -38,13 +38,14 @@ class SessionViewModelTest {
     private val voice = FakeRecorder()
     private val video = FakeRecorder()
     private val repository = FakeRepository()
+    private val handset = MutableStateFlow(true)
     private lateinit var recordings: File
     private lateinit var viewModel: SessionViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        viewModel = SessionViewModel(lights, voice, video, RecordingFiles(folder.root), repository)
+        viewModel = SessionViewModel(lights, voice, video, RecordingFiles(folder.root), repository, handset)
         recordings = File(folder.root, "recordings")
     }
 
@@ -230,6 +231,56 @@ class SessionViewModelTest {
         viewModel.onPlaybackChanged(playing = false)
         waitSeconds(30)
         assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
+    @Test
+    fun theHandsetButtonStartsASession() = runTest(dispatcher) {
+        viewModel.onHandsetButton()
+        assertEquals(SessionState.Menu, viewModel.state.value)
+    }
+
+    @Test
+    fun unpluggingTheHandsetDropsTheRecording() = runTest(dispatcher) {
+        startRecording(RecordingMode.AUDIO)
+        waitSeconds(10)
+
+        handset.value = false
+        runCurrent()
+        assertTrue(viewModel.handsetMissing.value)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        assertFalse(voice.isRecording)
+        assertTrue(recordings.listFiles().isNullOrEmpty())
+
+        handset.value = true
+        runCurrent()
+        assertFalse(viewModel.handsetMissing.value)
+    }
+
+    @Test
+    fun unpluggingDuringTheCountdownClosesTheCamera() = runTest(dispatcher) {
+        viewModel.start()
+        viewModel.chooseMode(RecordingMode.VIDEO)
+        runCurrent()
+
+        handset.value = false
+        runCurrent()
+        assertFalse(video.isPrepared)
+
+        // The countdown is over for good: no recording starts behind the warning.
+        waitSeconds(10)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        assertFalse(video.isRecording)
+    }
+
+    @Test
+    fun theEmulatorCanRunWithoutAHandset() = runTest(dispatcher) {
+        handset.value = false
+        val emulator = SessionViewModel(
+            lights, voice, video, RecordingFiles(folder.root), repository, handset,
+            SessionConfig(requireHandset = false),
+        )
+        runCurrent()
+        assertFalse(emulator.handsetMissing.value)
     }
 
     @Test
