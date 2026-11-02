@@ -50,6 +50,6 @@ fun lightSceneFor(state: SessionState): LightScene = when (state) {
         else -> LightScene.RECORDING_AUDIO
     }
     is SessionState.Review, is SessionState.Player -> LightScene.REVIEW
-    SessionState.Saved -> LightScene.SAVED
+    is SessionState.Saved -> LightScene.SAVED
     is SessionState.Error -> LightScene.ERROR
 }

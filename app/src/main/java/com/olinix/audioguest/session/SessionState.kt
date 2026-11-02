@@ -25,13 +25,14 @@ sealed class SessionState {
         val maxSeconds: Int,
     ) : SessionState() {
         val remainingSeconds: Int get() = maxSeconds - elapsedSeconds
+        val progress: Float get() = elapsedSeconds.toFloat() / maxSeconds
     }
 
     /** Play back before saving: Save · Retry · Discard. */
-    data class Review(val mode: RecordingMode) : SessionState()
+    data class Review(val mode: RecordingMode, val durationSeconds: Int) : SessionState()
 
     /** "¡Gracias!" and automatic return to Idle. */
-    data object Saved : SessionState()
+    data class Saved(val secondsLeft: Int, val totalSeconds: Int) : SessionState()
 
     data object Gallery : SessionState()
 
