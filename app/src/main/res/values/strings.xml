@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">AudioGuestTelefone</string>
+
+    <!-- Idle / invitation -->
+    <string name="idle_title">Toma el auricular y toca la pantalla</string>
+    <string name="idle_subtitle">Déjanos un mensaje de voz o de video</string>
+    <string name="idle_cta">Toca para empezar</string>
+</resources>

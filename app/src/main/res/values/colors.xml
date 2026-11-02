@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only for non-Compose parts: launch window background and app icon. -->
+    <color name="charcoal">#FF17120E</color>
+    <color name="gold">#FFD6AB62</color>
+</resources>

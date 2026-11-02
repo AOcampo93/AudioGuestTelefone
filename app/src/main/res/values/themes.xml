@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark background from the first frame so there is no white flash on launch. -->
+    <style name="Theme.AudioGuestTelefone" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/charcoal</item>
+    </style>
+</resources>
