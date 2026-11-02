@@ -11,10 +11,10 @@ The goal of this project is to learn native Android development with Kotlin and 
 - Android Studio Rabbit 2 (2026.2.2) on macOS (Apple Silicon)
 - Kotlin 2.4 with Jetpack Compose and Material 3
 - Android Gradle Plugin 9.5, Gradle 9.6
-- Target device: Lenovo Tab M11 (Android 13), portrait, kiosk-style full screen
+- Target device: Lenovo Tab M11 (tested on Android 15), portrait, kiosk-style full screen
 - Hardware: retro USB-C telephone handset (microphone + speaker) through a USB-C hub
 
-The app covers the screen with "Conecta el auricular" until the handset is plugged in. The emulator cannot plug in a USB handset, so start it there with:
+The app covers the screen with "Conecta el auricular" until the handset is plugged in. To try it without a handset (the emulator cannot plug one in), start it with:
 
 ```
 adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset false

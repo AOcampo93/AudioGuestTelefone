@@ -2,11 +2,13 @@ package com.olinix.audioguest
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,7 +32,7 @@ import com.olinix.audioguest.ui.theme.AudioGuestTheme
 class MainActivity : ComponentActivity() {
 
     private val config by lazy {
-        // For the emulator only: `adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset false`
+        // For testing without a handset, as on the emulator: `adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset false`
         SessionConfig(requireHandset = intent.getBooleanExtra(EXTRA_REQUIRE_HANDSET, true))
     }
 
@@ -57,7 +59,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Android briefly shows the status bar when the camera or microphone turns on. The app is
+        // always dark, so its clock and icons must be light even when the tablet uses light mode.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
         hideSystemBars()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         askForMissingPermissions()
