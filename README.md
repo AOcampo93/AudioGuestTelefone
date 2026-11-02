@@ -19,6 +19,8 @@ The goal of this project is to learn native Android development with Kotlin and 
 - [Kotlin documentation](https://kotlinlang.org/docs/home.html)
 - [Jetpack Compose](https://developer.android.com/develop/ui/compose)
 - [Audio device routing (AudioManager)](https://developer.android.com/reference/android/media/AudioManager)
+- [Room persistence library](https://developer.android.com/training/data-storage/room)
+- [Media3 ExoPlayer](https://developer.android.com/media/media3/exoplayer)
 - [WLED JSON API](https://kno.wled.ge/interfaces/json-api/)
 
 # Future Work

@@ -147,14 +147,28 @@ fun LookHereTab(modifier: Modifier = Modifier, light: Boolean = true) {
     }
 }
 
-/** Thin rounded progress bar that glides between the once-per-second updates. */
+/**
+ * Thin rounded progress bar.
+ *
+ * @param glide ease between once-per-second updates, like the recording timer.
+ * Playback already updates often, so it turns this off to avoid lagging behind the sound.
+ */
 @Composable
-fun ProgressBar(progress: Float, color: Color, modifier: Modifier = Modifier, height: Dp = 12.dp, track: Color = Ivory.copy(alpha = 0.14f)) {
-    val shown by animateFloatAsState(
-        targetValue = progress.coerceIn(0f, 1f),
+fun ProgressBar(
+    progress: Float,
+    color: Color,
+    modifier: Modifier = Modifier,
+    height: Dp = 12.dp,
+    track: Color = Ivory.copy(alpha = 0.14f),
+    glide: Boolean = true,
+) {
+    val target = progress.coerceIn(0f, 1f)
+    val animated by animateFloatAsState(
+        targetValue = target,
         animationSpec = tween(durationMillis = 900, easing = LinearEasing),
         label = "progress",
     )
+    val shown = if (glide) animated else target
     Box(
         modifier
             .height(height)

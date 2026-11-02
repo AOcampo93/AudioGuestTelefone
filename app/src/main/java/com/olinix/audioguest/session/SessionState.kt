@@ -42,9 +42,11 @@ sealed class SessionState {
     /** "¡Gracias!" and automatic return to Idle. */
     data class Saved(val secondsLeft: Int, val totalSeconds: Int) : SessionState()
 
-    data object Gallery : SessionState()
+    /** "Mensajes del evento", showing the messages under one tab. */
+    data class Gallery(val filter: GalleryFilter = GalleryFilter.ALL) : SessionState()
 
-    data class Player(val recordingId: Long) : SessionState()
+    /** One message playing. Previous and next stay inside the tab the guest came from. */
+    data class Player(val recordingId: Long, val filter: GalleryFilter) : SessionState()
 
     /** Something failed: a clear message and what to do. */
     data class Error(val reason: ErrorReason) : SessionState()

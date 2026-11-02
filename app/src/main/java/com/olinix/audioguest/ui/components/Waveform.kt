@@ -22,7 +22,7 @@ import kotlin.math.sin
 
 /**
  * Vertical-bar sound wave. Bar heights follow a fixed pseudo-random shape (same [seed], same wave),
- * so a recording always looks the same in the review and the gallery.
+ * so a saved message always looks the same in the gallery and the player.
  *
  * @param animated bars breathe up and down, like the live wave while recording.
  * @param played fraction already played; bars after it use [restColor]. Negative means "all played".

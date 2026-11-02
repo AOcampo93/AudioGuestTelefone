@@ -25,6 +25,7 @@ import com.olinix.audioguest.ui.error.ErrorScreen
 import com.olinix.audioguest.ui.gallery.GalleryScreen
 import com.olinix.audioguest.ui.idle.IdleScreen
 import com.olinix.audioguest.ui.menu.MenuScreen
+import com.olinix.audioguest.ui.player.PlayerScreen
 import com.olinix.audioguest.ui.recording.RecordingScreen
 import com.olinix.audioguest.ui.review.ReviewScreen
 import com.olinix.audioguest.ui.saved.SavedScreen
@@ -34,6 +35,7 @@ import com.olinix.audioguest.ui.theme.Charcoal
 @Composable
 fun AudioGuestApp(viewModel: SessionViewModel, event: EventInfo, config: SessionConfig) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val recordings by viewModel.recordings.collectAsStateWithLifecycle()
 
     // In a kiosk the system back gesture only steps back inside the guest flow.
     BackHandler { viewModel.back() }
@@ -79,13 +81,27 @@ fun AudioGuestApp(viewModel: SessionViewModel, event: EventInfo, config: Session
                     onSave = viewModel::save,
                     onRetry = viewModel::retry,
                     onDiscard = viewModel::discard,
+                    onPlayingChange = viewModel::onPlaybackChanged,
                 )
                 is SessionState.Saved -> SavedScreen(current, event)
-                // The player arrives in phase 5; until then it falls back to the gallery.
-                SessionState.Gallery, is SessionState.Player -> GalleryScreen(
+                is SessionState.Gallery -> GalleryScreen(
                     event = event,
+                    recordings = recordings,
+                    filter = current.filter,
+                    fileOf = viewModel::fileOf,
+                    onFilter = viewModel::showTab,
+                    onOpen = viewModel::play,
                     onBack = viewModel::back,
                     onLeaveMessage = viewModel::back,
+                )
+                is SessionState.Player -> PlayerScreen(
+                    state = current,
+                    recordings = recordings,
+                    fileOf = viewModel::fileOf,
+                    onPrevious = viewModel::playPrevious,
+                    onNext = viewModel::playNext,
+                    onBack = viewModel::back,
+                    onPlayingChange = viewModel::onPlaybackChanged,
                 )
                 is SessionState.Error -> ErrorScreen(reason = current.reason, onBack = viewModel::back)
             }

@@ -4,14 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.olinix.audioguest.audio.MessageRecorder
 import com.olinix.audioguest.audio.RecordingFiles
+import com.olinix.audioguest.data.Recording
+import com.olinix.audioguest.data.RecordingRepository
 import com.olinix.audioguest.lights.LightController
 import com.olinix.audioguest.lights.LightScene
 import com.olinix.audioguest.lights.lightSceneFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -23,16 +27,24 @@ class SessionViewModel(
     private val lights: LightController,
     private val recorder: MessageRecorder,
     private val files: RecordingFiles,
+    private val repository: RecordingRepository,
     private val config: SessionConfig = SessionConfig(),
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<SessionState>(SessionState.Idle)
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
+    /** Saved messages, newest first. Loaded right away so the gallery opens already filled. */
+    val recordings: StateFlow<List<Recording>> =
+        repository.recordings.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     /** Countdown, recording clock or "¡Gracias!" timer. Only one runs at a time. */
     private var timerJob: Job? = null
     private var inactivityJob: Job? = null
     private var lastScene: LightScene? = null
+
+    /** A message is playing, so the guest is listening rather than gone. */
+    private var mediaPlaying = false
 
     /** The file being recorded right now, until it reaches the review screen. */
     private var capturingFile: File? = null
@@ -48,10 +60,10 @@ class SessionViewModel(
     }
 
     fun back() {
-        when (_state.value) {
+        when (val current = _state.value) {
             SessionState.Menu -> moveTo(SessionState.Idle)
-            SessionState.Gallery -> moveTo(SessionState.Menu)
-            is SessionState.Player -> moveTo(SessionState.Gallery)
+            is SessionState.Gallery -> moveTo(SessionState.Menu)
+            is SessionState.Player -> moveTo(SessionState.Gallery(current.filter))
             is SessionState.Error -> moveTo(SessionState.Idle)
             // Mid-recording and the other screens ignore the system back gesture.
             else -> Unit
@@ -63,8 +75,25 @@ class SessionViewModel(
     }
 
     fun openGallery() {
-        if (_state.value == SessionState.Menu) moveTo(SessionState.Gallery)
+        if (_state.value == SessionState.Menu) moveTo(SessionState.Gallery())
     }
+
+    fun showTab(filter: GalleryFilter) {
+        if (_state.value is SessionState.Gallery) moveTo(SessionState.Gallery(filter))
+    }
+
+    /** Gallery → Player for the tapped message. */
+    fun play(recordingId: Long) {
+        val gallery = _state.value as? SessionState.Gallery ?: return
+        moveTo(SessionState.Player(recordingId, gallery.filter))
+    }
+
+    fun playNext() = step(1)
+
+    fun playPrevious() = step(-1)
+
+    /** Where a saved message's audio or video lives. */
+    fun fileOf(recording: Recording): File = files.fileFor(recording)
 
     /** The guest pressed "Terminar" before the time ran out. */
     fun finishRecording() {
@@ -75,8 +104,9 @@ class SessionViewModel(
 
     fun save() {
         val review = _state.value as? SessionState.Review ?: return
-        review.file?.let(files::keep)
+        val kept = review.file?.let(files::keep)
         runTimer {
+            if (kept != null) repository.add(review.mode, kept, review.durationSeconds)
             for (left in config.savedSeconds downTo 1) {
                 moveTo(SessionState.Saved(secondsLeft = left, totalSeconds = config.savedSeconds))
                 delay(ONE_SECOND)
@@ -100,6 +130,12 @@ class SessionViewModel(
 
     /** Any touch on the screen keeps the current screen alive for another [SessionConfig.inactivitySeconds]. */
     fun onUserInteraction() {
+        restartInactivityTimer()
+    }
+
+    /** A message started or stopped playing. Nobody is sent back to the start in the middle of one. */
+    fun onPlaybackChanged(playing: Boolean) {
+        mediaPlaying = playing
         restartInactivityTimer()
     }
 
@@ -150,6 +186,15 @@ class SessionViewModel(
         moveTo(SessionState.Review(mode, seconds, file))
     }
 
+    /** Moves through the messages of the current tab and wraps around at either end. */
+    private fun step(offset: Int) {
+        val player = _state.value as? SessionState.Player ?: return
+        val playlist = player.filter.pick(recordings.value)
+        val index = playlist.indexOfFirst { it.id == player.recordingId }
+        if (index < 0) return
+        moveTo(player.copy(recordingId = playlist[(index + offset).mod(playlist.size)].id))
+    }
+
     private fun runTimer(block: suspend () -> Unit) {
         timerJob?.cancel()
         timerJob = viewModelScope.launch { block() }
@@ -170,7 +215,7 @@ class SessionViewModel(
 
     private fun restartInactivityTimer() {
         inactivityJob?.cancel()
-        if (!expiresWhenUnattended(_state.value)) return
+        if (mediaPlaying || !expiresWhenUnattended(_state.value)) return
         inactivityJob = viewModelScope.launch {
             delay(config.inactivitySeconds * ONE_SECOND)
             // A guest who walks away from the review did not choose to save.
@@ -181,7 +226,7 @@ class SessionViewModel(
 
     /** Screens that wait for the guest. Countdown, recording and "¡Gracias!" end on their own. */
     private fun expiresWhenUnattended(state: SessionState): Boolean = when (state) {
-        SessionState.Menu, SessionState.Gallery, is SessionState.Review,
+        SessionState.Menu, is SessionState.Gallery, is SessionState.Review,
         is SessionState.Player, is SessionState.Error -> true
         else -> false
     }

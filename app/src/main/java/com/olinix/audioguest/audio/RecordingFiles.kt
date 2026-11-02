@@ -1,5 +1,6 @@
 package com.olinix.audioguest.audio
 
+import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.session.RecordingMode
 import java.io.File
 
@@ -20,6 +21,8 @@ class RecordingFiles(root: File) {
         if (!pending.renameTo(kept)) pending.copyTo(kept, overwrite = true).also { pending.delete() }
         return kept
     }
+
+    fun fileFor(recording: Recording): File = File(directory, recording.fileName)
 
     fun discard(file: File?) {
         file?.delete()

@@ -128,6 +128,7 @@ fun AccentCircle(
     iconSize: Dp,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    contentDescription: String? = null,
 ) {
     Box(
         modifier = modifier
@@ -137,6 +138,28 @@ fun AccentCircle(
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(painterResource(icon), contentDescription = null, tint = Charcoal, modifier = Modifier.size(iconSize))
+        Icon(painterResource(icon), contentDescription = contentDescription, tint = Charcoal, modifier = Modifier.size(iconSize))
+    }
+}
+
+/** Outlined circle for secondary round buttons, such as previous and next in the player. */
+@Composable
+fun OutlineCircle(
+    @DrawableRes icon: Int,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 100.dp,
+    iconSize: Dp = 40.dp,
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .border(2.dp, Ivory.copy(alpha = 0.3f), CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(painterResource(icon), contentDescription = contentDescription, tint = Ivory, modifier = Modifier.size(iconSize))
     }
 }

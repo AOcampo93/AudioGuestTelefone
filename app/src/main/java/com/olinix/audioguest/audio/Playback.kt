@@ -9,26 +9,36 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.annotation.OptIn
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.compose.ContentFrame
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import kotlinx.coroutines.delay
 import java.io.File
 
 /** Play/pause state of one recording, observable from Compose. */
 @Stable
-class Playback internal constructor(private val player: ExoPlayer) {
+class Playback internal constructor(internal val player: ExoPlayer) {
 
     var isPlaying by mutableStateOf(false)
         private set
     var positionMs by mutableLongStateOf(0L)
         private set
 
+    /** Zero until the file is loaded. Kept as state so [progress] updates the screen once it is known. */
+    private var durationMs by mutableLongStateOf(0L)
+
     /** Fraction already played, from 0 to 1. */
     val progress: Float
-        get() = if (player.duration > 0) positionMs.toFloat() / player.duration else 0f
+        get() = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
 
     fun toggle() {
         when {
@@ -43,6 +53,8 @@ class Playback internal constructor(private val player: ExoPlayer) {
 
     internal fun refresh() {
         isPlaying = player.isPlaying
+        // The player reports an unknown length (a negative constant) until the file is loaded.
+        durationMs = player.duration.coerceAtLeast(0L)
         // At the end, show the full length instead of a few milliseconds short.
         positionMs = if (player.playbackState == Player.STATE_ENDED) player.duration else player.currentPosition
     }
@@ -51,18 +63,25 @@ class Playback internal constructor(private val player: ExoPlayer) {
 /**
  * Creates a player for [file] that lives as long as the calling screen.
  * Sound goes to the handset when it is plugged in, otherwise to the tablet speakers.
+ *
+ * @param autoPlay start as soon as the file is ready, as the gallery player does.
+ * @param onPlayingChange told when playback starts and stops, and `false` when the screen goes away.
  */
+// Choosing the output device is marked unstable in Media3: its signature may change between versions.
+@OptIn(UnstableApi::class)
 @Composable
-fun rememberPlayback(file: File): Playback {
+fun rememberPlayback(file: File, autoPlay: Boolean = false, onPlayingChange: (Boolean) -> Unit = {}): Playback {
     val context = LocalContext.current
     val player = remember(file) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
             Handset.output(context)?.let(::setPreferredAudioDevice)
+            playWhenReady = autoPlay
             prepare()
         }
     }
     val playback = remember(player) { Playback(player) }
+    val reportPlaying by rememberUpdatedState(onPlayingChange)
 
     DisposableEffect(player) {
         val listener = object : Player.Listener {
@@ -72,8 +91,10 @@ fun rememberPlayback(file: File): Playback {
         onDispose {
             player.removeListener(listener)
             player.release()
+            reportPlaying(false)
         }
     }
+    LaunchedEffect(playback, playback.isPlaying) { reportPlaying(playback.isPlaying) }
     // The player has no position callback, so poll it while playing.
     LaunchedEffect(playback.isPlaying) {
         while (playback.isPlaying) {
@@ -82,4 +103,17 @@ fun rememberPlayback(file: File): Playback {
         }
     }
     return playback
+}
+
+/** The picture of a video [playback], letterboxed to fit. */
+@OptIn(UnstableApi::class)
+@Composable
+fun VideoFrame(playback: Playback, modifier: Modifier = Modifier) {
+    // A texture view, unlike a surface view, respects the rounded corners of its container.
+    ContentFrame(
+        player = playback.player,
+        modifier = modifier,
+        surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+        contentScale = ContentScale.Fit,
+    )
 }

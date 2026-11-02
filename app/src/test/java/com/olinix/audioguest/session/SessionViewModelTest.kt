@@ -2,10 +2,13 @@ package com.olinix.audioguest.session
 
 import com.olinix.audioguest.audio.MessageRecorder
 import com.olinix.audioguest.audio.RecordingFiles
+import com.olinix.audioguest.data.Recording
+import com.olinix.audioguest.data.RecordingRepository
 import com.olinix.audioguest.lights.LightController
 import com.olinix.audioguest.lights.LightScene
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -33,13 +36,14 @@ class SessionViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val lights = RecordingLights()
     private val recorder = FakeRecorder()
+    private val repository = FakeRepository()
     private lateinit var recordings: File
     private lateinit var viewModel: SessionViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        viewModel = SessionViewModel(lights, recorder, RecordingFiles(folder.root))
+        viewModel = SessionViewModel(lights, recorder, RecordingFiles(folder.root), repository)
         recordings = File(folder.root, "recordings")
     }
 
@@ -110,6 +114,10 @@ class SessionViewModelTest {
         assertFalse(pending.exists())
         assertEquals(1, savedFiles().size)
 
+        val saved = viewModel.recordings.value.single()
+        assertEquals(RecordingMode.AUDIO, saved.mode)
+        assertEquals(savedFiles().single(), viewModel.fileOf(saved))
+
         waitSeconds(5)
         assertEquals(SessionState.Idle, viewModel.state.value)
     }
@@ -146,6 +154,57 @@ class SessionViewModelTest {
     }
 
     @Test
+    fun theGalleryRemembersItsTab() = runTest(dispatcher) {
+        repository.saved.value = listOf(voice(id = 2), video(id = 1))
+        viewModel.start()
+        viewModel.openGallery()
+        viewModel.showTab(GalleryFilter.VIDEO)
+        viewModel.play(recordingId = 1)
+        assertEquals(SessionState.Player(1, GalleryFilter.VIDEO), viewModel.state.value)
+
+        viewModel.back()
+        assertEquals(SessionState.Gallery(GalleryFilter.VIDEO), viewModel.state.value)
+        viewModel.back()
+        assertEquals(SessionState.Menu, viewModel.state.value)
+    }
+
+    @Test
+    fun nextAndPreviousStayInTheTabAndWrapAround() = runTest(dispatcher) {
+        repository.saved.value = listOf(voice(id = 4), video(id = 3), voice(id = 2), voice(id = 1))
+        runCurrent()
+        viewModel.start()
+        viewModel.openGallery()
+        viewModel.showTab(GalleryFilter.VOICE)
+        viewModel.play(recordingId = 4)
+
+        // The video (3) is not in the "Voz" tab, so it is skipped.
+        viewModel.playNext()
+        assertEquals(2L, (viewModel.state.value as SessionState.Player).recordingId)
+        viewModel.playNext()
+        viewModel.playNext()
+        assertEquals(4L, (viewModel.state.value as SessionState.Player).recordingId)
+        viewModel.playPrevious()
+        assertEquals(1L, (viewModel.state.value as SessionState.Player).recordingId)
+    }
+
+    @Test
+    fun aPlayingMessageIsNotCutOff() = runTest(dispatcher) {
+        repository.saved.value = listOf(voice(id = 1, seconds = 180))
+        viewModel.start()
+        viewModel.openGallery()
+        viewModel.play(recordingId = 1)
+        viewModel.onPlaybackChanged(playing = true)
+
+        waitSeconds(120)
+        assertEquals(SessionState.Player(1, GalleryFilter.ALL), viewModel.state.value)
+
+        // Once it ends, the usual 30 seconds start counting.
+        viewModel.onPlaybackChanged(playing = false)
+        waitSeconds(30)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
+    @Test
     fun missingMicrophoneShowsAnError() = runTest(dispatcher) {
         recorder.canStart = false
         startRecording(RecordingMode.AUDIO)
@@ -164,6 +223,10 @@ class SessionViewModelTest {
         assertNull(recordings.listFiles()?.firstOrNull())
         assertEquals(LightScene.ERROR, lights.shown.last())
     }
+
+    private fun voice(id: Long, seconds: Int = 30) = Recording(id, RecordingMode.AUDIO, "voice-$id.m4a", seconds, savedAt = id)
+
+    private fun video(id: Long) = Recording(id, RecordingMode.VIDEO, "video-$id.mp4", 30, savedAt = id)
 
     private fun savedFiles(): List<File> =
         recordings.listFiles()?.filterNot { it.name.startsWith("pending-") }.orEmpty()
@@ -184,6 +247,17 @@ class SessionViewModelTest {
         val shown = mutableListOf<LightScene>()
         override fun show(scene: LightScene) {
             shown += scene
+        }
+    }
+
+    /** Keeps saved messages in a list instead of a database. */
+    private class FakeRepository : RecordingRepository {
+        val saved = MutableStateFlow<List<Recording>>(emptyList())
+        override val recordings = saved
+
+        override suspend fun add(mode: RecordingMode, file: File, durationSeconds: Int) {
+            val id = saved.value.size + 1L
+            saved.value = listOf(Recording(id, mode, file.name, durationSeconds, savedAt = id)) + saved.value
         }
     }
 

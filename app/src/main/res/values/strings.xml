@@ -68,6 +68,16 @@
     <string name="gallery_empty_subtitle">¡Sé el primero!</string>
     <string name="gallery_leave_message">Dejar un mensaje</string>
 
+    <!-- Player -->
+    <string name="player_back_to_gallery">Volver a la galería</string>
+    <string name="player_heading">%1$s · %2$s</string>
+    <string name="player_position">%1$d de %2$d</string>
+    <string name="player_listen_handset">Escúchalo por el auricular</string>
+    <string name="player_previous">Anterior</string>
+    <string name="player_next">Siguiente</string>
+    <string name="play">Reproducir</string>
+    <string name="pause">Pausar</string>
+
     <!-- Error -->
     <string name="error_microphone">No se pudo usar el micrófono</string>
     <string name="error_recording">No se pudo guardar la grabación</string>

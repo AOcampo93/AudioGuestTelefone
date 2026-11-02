@@ -14,6 +14,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olinix.audioguest.audio.HandsetAudioRecorder
 import com.olinix.audioguest.audio.RecordingFiles
+import com.olinix.audioguest.data.AudioGuestDatabase
+import com.olinix.audioguest.data.LocalRecordingRepository
 import com.olinix.audioguest.lights.NoOpLightController
 import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.SessionConfig
@@ -43,6 +45,7 @@ class MainActivity : ComponentActivity() {
                         lights = NoOpLightController(),
                         recorder = HandsetAudioRecorder(applicationContext),
                         files = RecordingFiles(filesDir),
+                        repository = LocalRecordingRepository(AudioGuestDatabase.get(applicationContext).recordings()),
                         config = config,
                     )
                 }

@@ -61,6 +61,7 @@ fun ReviewScreen(
     onSave: () -> Unit,
     onRetry: () -> Unit,
     onDiscard: () -> Unit,
+    onPlayingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var confirmingDiscard by remember { mutableStateOf(false) }
@@ -86,7 +87,7 @@ fun ReviewScreen(
             ) {
                 when {
                     isVideo -> VideoPreview(state.durationSeconds)
-                    state.file != null -> VoicePreview(state.file, state.durationSeconds)
+                    state.file != null -> VoicePreview(state.file, state.durationSeconds, onPlayingChange)
                 }
             }
 
@@ -129,9 +130,9 @@ fun ReviewScreen(
 
 /** Voice preview: the wave fills in as the message plays through the handset. */
 @Composable
-private fun VoicePreview(file: File, durationSeconds: Int) {
+private fun VoicePreview(file: File, durationSeconds: Int, onPlayingChange: (Boolean) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
-    val playback = rememberPlayback(file)
+    val playback = rememberPlayback(file, onPlayingChange = onPlayingChange)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -257,5 +258,5 @@ private fun DiscardDialog(onKeep: () -> Unit, onDiscard: () -> Unit) {
 @Preview(widthDp = 800, heightDp = 1280)
 @Composable
 private fun ReviewPreview() {
-    AudioGuestTheme { ReviewScreen(SessionState.Review(RecordingMode.VIDEO, 52, file = null), onSave = {}, onRetry = {}, onDiscard = {}) }
+    AudioGuestTheme { ReviewScreen(SessionState.Review(RecordingMode.VIDEO, 52, file = null), onSave = {}, onRetry = {}, onDiscard = {}, onPlayingChange = {}) }
 }
