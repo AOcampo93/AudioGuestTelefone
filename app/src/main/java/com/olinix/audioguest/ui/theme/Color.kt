@@ -18,6 +18,18 @@ val Gold = Color(0xFFD6AB62)
 
 /** Timer and progress bar during the last 10 seconds of a recording. */
 val Amber = Color(0xFFFFA22E)
+val AmberLight = Color(0xFFFFB44F)
+val AmberMuted = Color(0xFFD9A35E)
 
-/** Reserved for the "Recording" indicator. */
+/** Reserved for the "Recording" indicator and destructive actions. */
 val RecordRed = Color(0xFFE5483D)
+val RecordRedLight = Color(0xFFFF8178)
+
+/** Errors and the "connect the handset" warning. */
+val WarningOrange = Color(0xFFFF8A3D)
+
+/** Translucent dark chip over the camera image. */
+val Scrim = Color(0xC717120E)
+
+/** Darkens the screen behind a dialog. */
+val DialogScrim = Color(0xC70C0907)

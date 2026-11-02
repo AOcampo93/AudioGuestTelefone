@@ -5,4 +5,70 @@
     <string name="idle_title">Toma el auricular y toca la pantalla</string>
     <string name="idle_subtitle">Déjanos un mensaje de voz o de video</string>
     <string name="idle_cta">Toca para empezar</string>
+
+    <!-- Shared -->
+    <string name="back">Volver</string>
+    <string name="voice_message">Mensaje de voz</string>
+    <string name="video_message">Mensaje de video</string>
+    <string name="speak_into_handset">Habla por el auricular</string>
+    <string name="look_here">Mira aquí</string>
+
+    <!-- Menu -->
+    <string name="menu_title">¿Qué quieres dejar?</string>
+    <string name="menu_video_hint">Mira a la cámara de la tablet</string>
+    <string name="menu_up_to_minutes">hasta %1$d min</string>
+    <string name="menu_gallery">Ver grabaciones</string>
+    <string name="menu_gallery_hint">Escucha y mira los mensajes</string>
+
+    <!-- Countdown -->
+    <string name="countdown_get_ready">Prepárate…</string>
+    <string name="countdown_look_at_camera">Mira a la cámara…</string>
+    <string name="countdown_now">¡Ahora!</string>
+    <string name="countdown_now_video">Mira a la cámara y habla</string>
+
+    <!-- Recording -->
+    <string name="recording">Grabando</string>
+    <string name="recording_finish">Terminar</string>
+    <string name="recording_remaining">Quedan %1$s</string>
+    <string name="recording_wrap_up">Ve despidiéndote</string>
+    <plurals name="recording_seconds_left">
+        <item quantity="one">Queda %1$d segundo</item>
+        <item quantity="other">Quedan %1$d segundos</item>
+    </plurals>
+
+    <!-- Review -->
+    <string name="review_title">¿Te gusta cómo quedó?</string>
+    <string name="review_listen_first">Escúchalo antes de guardarlo</string>
+    <string name="review_watch_first">Míralo antes de guardarlo</string>
+    <string name="review_your_voice">Tu mensaje de voz</string>
+    <string name="review_save">Guardar</string>
+    <string name="review_retry">Repetir</string>
+    <string name="review_discard">Descartar</string>
+    <string name="discard_title">¿Descartar este mensaje?</string>
+    <string name="discard_body">Se borrará y no podrás recuperarlo.</string>
+    <string name="discard_confirm">Sí, descartar</string>
+    <string name="discard_keep">No, conservar</string>
+
+    <!-- Saved -->
+    <string name="saved_title">¡Gracias!</string>
+    <string name="saved_for">Tu mensaje se guardó para %1$s</string>
+    <string name="saved_hang_up">Vuelve a colgar el auricular</string>
+    <string name="saved_back_in">Volviendo al inicio en %1$d s</string>
+
+    <!-- Gallery -->
+    <string name="gallery_title">Mensajes del evento</string>
+    <plurals name="gallery_count">
+        <item quantity="one">%1$d mensaje</item>
+        <item quantity="other">%1$d mensajes</item>
+    </plurals>
+    <string name="gallery_tab_all">Todos</string>
+    <string name="gallery_tab_voice">Voz</string>
+    <string name="gallery_tab_video">Video</string>
+    <string name="gallery_empty_title">Todavía no hay mensajes.</string>
+    <string name="gallery_empty_subtitle">¡Sé el primero!</string>
+    <string name="gallery_leave_message">Dejar un mensaje</string>
+
+    <!-- Error -->
+    <string name="error_hint">Avisa al anfitrión si vuelve a pasar.</string>
+    <string name="error_back_to_start">Volver al inicio</string>
 </resources>
