@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionState
 import com.olinix.audioguest.ui.components.AccentCircle
@@ -51,6 +52,7 @@ import com.olinix.audioguest.ui.theme.Sand
 import com.olinix.audioguest.ui.theme.SurfaceRaised
 import com.olinix.audioguest.ui.theme.Taupe
 import com.olinix.audioguest.util.formatDuration
+import java.io.File
 
 /** Screen 8 · "¿Te gusta cómo quedó?" Save, retry or discard (with confirmation). */
 @Composable
@@ -82,7 +84,10 @@ fun ReviewScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 40.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                if (isVideo) VideoPreview(state.durationSeconds) else VoicePreview(state.durationSeconds)
+                when {
+                    isVideo -> VideoPreview(state.durationSeconds)
+                    state.file != null -> VoicePreview(state.file, state.durationSeconds)
+                }
             }
 
             PillButton(
@@ -122,10 +127,11 @@ fun ReviewScreen(
     }
 }
 
-/** Voice preview: static wave, big play button and the length. Playback arrives in phase 2. */
+/** Voice preview: the wave fills in as the message plays through the handset. */
 @Composable
-private fun VoicePreview(durationSeconds: Int) {
+private fun VoicePreview(file: File, durationSeconds: Int) {
     val accent = MaterialTheme.colorScheme.primary
+    val playback = rememberPlayback(file)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -140,15 +146,20 @@ private fun VoicePreview(durationSeconds: Int) {
             Icon(painterResource(R.drawable.ic_mic), contentDescription = null, tint = accent, modifier = Modifier.size(28.dp))
             Text(stringResource(R.string.review_your_voice), fontSize = 22.sp, color = Taupe, style = MaterialTheme.typography.bodyMedium)
         }
-        Waveform(color = accent, played = 0f, modifier = Modifier.fillMaxWidth().height(160.dp))
+        Waveform(color = accent, played = playback.progress, modifier = Modifier.fillMaxWidth().height(160.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
-            AccentCircle(icon = R.drawable.ic_play, size = 108.dp, iconSize = 44.dp)
-            PlaybackTime(positionSeconds = 0, durationSeconds = durationSeconds)
+            AccentCircle(
+                icon = if (playback.isPlaying) R.drawable.ic_pause else R.drawable.ic_play,
+                size = 108.dp,
+                iconSize = 44.dp,
+                onClick = playback::toggle,
+            )
+            PlaybackTime(positionSeconds = (playback.positionMs / 1000).toInt(), durationSeconds = durationSeconds)
         }
     }
 }
 
-/** Video preview: dark frame with a centered play button and a seek bar. Playback arrives in phase 4. */
+/** Video preview: dark frame with a centered play button and a seek bar. Playback arrives with the camera. */
 @Composable
 private fun VideoPreview(durationSeconds: Int) {
     Box(
@@ -246,5 +257,5 @@ private fun DiscardDialog(onKeep: () -> Unit, onDiscard: () -> Unit) {
 @Preview(widthDp = 800, heightDp = 1280)
 @Composable
 private fun ReviewPreview() {
-    AudioGuestTheme { ReviewScreen(SessionState.Review(RecordingMode.AUDIO, 75), onSave = {}, onRetry = {}, onDiscard = {}) }
+    AudioGuestTheme { ReviewScreen(SessionState.Review(RecordingMode.VIDEO, 52, file = null), onSave = {}, onRetry = {}, onDiscard = {}) }
 }

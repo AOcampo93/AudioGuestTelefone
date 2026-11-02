@@ -1,7 +1,12 @@
 package com.olinix.audioguest.session
 
+import java.io.File
+
 /** What the guest leaves. */
 enum class RecordingMode { AUDIO, VIDEO }
+
+/** Why a session ended on the error screen. */
+enum class ErrorReason { MICROPHONE_UNAVAILABLE, RECORDING_FAILED }
 
 /**
  * Every possible moment of a guest session.
@@ -28,8 +33,11 @@ sealed class SessionState {
         val progress: Float get() = elapsedSeconds.toFloat() / maxSeconds
     }
 
-    /** Play back before saving: Save · Retry · Discard. */
-    data class Review(val mode: RecordingMode, val durationSeconds: Int) : SessionState()
+    /**
+     * Play back before saving: Save · Retry · Discard.
+     * [file] is null for video until the camera is wired in.
+     */
+    data class Review(val mode: RecordingMode, val durationSeconds: Int, val file: File?) : SessionState()
 
     /** "¡Gracias!" and automatic return to Idle. */
     data class Saved(val secondsLeft: Int, val totalSeconds: Int) : SessionState()
@@ -39,5 +47,5 @@ sealed class SessionState {
     data class Player(val recordingId: Long) : SessionState()
 
     /** Something failed: a clear message and what to do. */
-    data class Error(val message: String) : SessionState()
+    data class Error(val reason: ErrorReason) : SessionState()
 }

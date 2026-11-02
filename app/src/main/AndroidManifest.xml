@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <!-- allowBackup=false: guest recordings must never be copied to Google's cloud backup (GDPR). -->
     <application
         android:allowBackup="false"

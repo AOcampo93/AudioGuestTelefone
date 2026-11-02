@@ -2,6 +2,8 @@ package com.olinix.audioguest.session
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.olinix.audioguest.audio.MessageRecorder
+import com.olinix.audioguest.audio.RecordingFiles
 import com.olinix.audioguest.lights.LightController
 import com.olinix.audioguest.lights.LightScene
 import com.olinix.audioguest.lights.lightSceneFor
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * The guest session state machine. Screens call the event functions below;
@@ -18,6 +21,8 @@ import kotlinx.coroutines.launch
  */
 class SessionViewModel(
     private val lights: LightController,
+    private val recorder: MessageRecorder,
+    private val files: RecordingFiles,
     private val config: SessionConfig = SessionConfig(),
 ) : ViewModel() {
 
@@ -29,7 +34,11 @@ class SessionViewModel(
     private var inactivityJob: Job? = null
     private var lastScene: LightScene? = null
 
+    /** The file being recorded right now, until it reaches the review screen. */
+    private var capturingFile: File? = null
+
     init {
+        files.clearPending()
         moveTo(SessionState.Idle)
     }
 
@@ -61,11 +70,12 @@ class SessionViewModel(
     fun finishRecording() {
         val capturing = _state.value as? SessionState.Capturing ?: return
         timerJob?.cancel()
-        moveTo(SessionState.Review(capturing.mode, capturing.elapsedSeconds))
+        stopCapture(capturing.mode, capturing.elapsedSeconds)
     }
 
     fun save() {
-        if (_state.value !is SessionState.Review) return
+        val review = _state.value as? SessionState.Review ?: return
+        review.file?.let(files::keep)
         runTimer {
             for (left in config.savedSeconds downTo 1) {
                 moveTo(SessionState.Saved(secondsLeft = left, totalSeconds = config.savedSeconds))
@@ -77,17 +87,27 @@ class SessionViewModel(
 
     fun retry() {
         val review = _state.value as? SessionState.Review ?: return
+        files.discard(review.file)
         startCountdown(review.mode)
     }
 
     /** Called after the guest confirmed "Sí, descartar". */
     fun discard() {
-        if (_state.value is SessionState.Review) moveTo(SessionState.Menu)
+        val review = _state.value as? SessionState.Review ?: return
+        files.discard(review.file)
+        moveTo(SessionState.Menu)
     }
 
     /** Any touch on the screen keeps the current screen alive for another [SessionConfig.inactivitySeconds]. */
     fun onUserInteraction() {
         restartInactivityTimer()
+    }
+
+    /** Live microphone loudness (0..1) for the recording wave. */
+    fun inputLevel(): Float = recorder.level()
+
+    override fun onCleared() {
+        recorder.cancel()
     }
 
     private fun startCountdown(mode: RecordingMode) = runTimer {
@@ -100,13 +120,34 @@ class SessionViewModel(
     }
 
     private suspend fun record(mode: RecordingMode) {
+        // Video is still simulated: the camera arrives in phase 4.
+        if (mode == RecordingMode.AUDIO) {
+            val file = files.newPending(mode)
+            if (!recorder.start(file)) {
+                moveTo(SessionState.Error(ErrorReason.MICROPHONE_UNAVAILABLE))
+                return
+            }
+            capturingFile = file
+        }
+
         val maxSeconds = config.maxSecondsFor(mode)
         for (elapsed in 0 until maxSeconds) {
             moveTo(SessionState.Capturing(mode, elapsed, maxSeconds))
             delay(ONE_SECOND)
         }
         // Time is up: the recording ends on its own.
-        moveTo(SessionState.Review(mode, maxSeconds))
+        stopCapture(mode, maxSeconds)
+    }
+
+    private fun stopCapture(mode: RecordingMode, seconds: Int) {
+        val file = capturingFile
+        capturingFile = null
+        if (file != null && !recorder.stop()) {
+            files.discard(file)
+            moveTo(SessionState.Error(ErrorReason.RECORDING_FAILED))
+            return
+        }
+        moveTo(SessionState.Review(mode, seconds, file))
     }
 
     private fun runTimer(block: suspend () -> Unit) {
@@ -132,6 +173,8 @@ class SessionViewModel(
         if (!expiresWhenUnattended(_state.value)) return
         inactivityJob = viewModelScope.launch {
             delay(config.inactivitySeconds * ONE_SECOND)
+            // A guest who walks away from the review did not choose to save.
+            (_state.value as? SessionState.Review)?.let { files.discard(it.file) }
             moveTo(SessionState.Idle)
         }
     }

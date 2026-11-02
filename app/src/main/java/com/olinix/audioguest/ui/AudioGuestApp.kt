@@ -69,7 +69,11 @@ fun AudioGuestApp(viewModel: SessionViewModel, event: EventInfo, config: Session
                     onGallery = viewModel::openGallery,
                 )
                 is SessionState.Countdown -> CountdownScreen(current)
-                is SessionState.Capturing -> RecordingScreen(current, onFinish = viewModel::finishRecording)
+                is SessionState.Capturing -> RecordingScreen(
+                    state = current,
+                    onFinish = viewModel::finishRecording,
+                    level = viewModel::inputLevel,
+                )
                 is SessionState.Review -> ReviewScreen(
                     state = current,
                     onSave = viewModel::save,
@@ -83,7 +87,7 @@ fun AudioGuestApp(viewModel: SessionViewModel, event: EventInfo, config: Session
                     onBack = viewModel::back,
                     onLeaveMessage = viewModel::back,
                 )
-                is SessionState.Error -> ErrorScreen(message = current.message, onBack = viewModel::back)
+                is SessionState.Error -> ErrorScreen(reason = current.reason, onBack = viewModel::back)
             }
         }
     }

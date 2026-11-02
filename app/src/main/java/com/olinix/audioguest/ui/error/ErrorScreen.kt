@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.session.ErrorReason
 import com.olinix.audioguest.ui.components.PillButton
 import com.olinix.audioguest.ui.components.screenBackground
 import com.olinix.audioguest.ui.theme.Ivory
@@ -27,7 +28,13 @@ import com.olinix.audioguest.ui.theme.WarningOrange
 
 /** Something went wrong: say what happened and offer a way out. */
 @Composable
-fun ErrorScreen(message: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun ErrorScreen(reason: ErrorReason, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    val message = stringResource(
+        when (reason) {
+            ErrorReason.MICROPHONE_UNAVAILABLE -> R.string.error_microphone
+            ErrorReason.RECORDING_FAILED -> R.string.error_recording
+        }
+    )
     Column(
         modifier = modifier
             .fillMaxSize()
