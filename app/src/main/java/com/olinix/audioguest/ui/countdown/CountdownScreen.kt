@@ -52,8 +52,11 @@ import com.olinix.audioguest.ui.theme.AudioGuestTheme
 import com.olinix.audioguest.ui.theme.Ivory
 import com.olinix.audioguest.ui.theme.IvorySoft
 
-/** Vertical position of the front camera on the Tab M11 held in portrait (18% from the top). */
-val CameraTabAlignment = BiasAlignment(horizontalBias = 1f, verticalBias = -0.64f)
+/** The front camera of the Tab M11 held in portrait sits halfway down its right edge. */
+val CameraTabAlignment = BiasAlignment(horizontalBias = 1f, verticalBias = 0f)
+
+/** Small enough to leave room on the right for the "Mira aquí" tab, level with the camera. */
+private val RingSize = 400.dp
 
 /**
  * Screen 4 · Full-screen 3, 2, 1 and "¡Ahora!". The recording starts by itself afterwards.
@@ -80,7 +83,7 @@ fun CountdownScreen(state: SessionState.Countdown, modifier: Modifier = Modifier
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(44.dp, Alignment.CenterVertically),
         ) {
-            Box(Modifier.size(560.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(RingSize), contentAlignment = Alignment.Center) {
                 if (state.number > 0) Number(state.number) else Now()
             }
             Text(
@@ -132,11 +135,11 @@ private fun BoxScope.Number(number: Int) {
         text = "$number",
         // Cormorant defaults to old-style figures; the countdown needs full-height ones.
         style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "lnum"),
-        fontSize = 420.sp,
-        lineHeight = 420.sp,
+        fontSize = 300.sp,
+        lineHeight = 300.sp,
         color = Ivory,
         // Cormorant's figures sit low in the line box; lift them to the optical center.
-        modifier = Modifier.offset(y = (-30).dp),
+        modifier = Modifier.offset(y = (-22).dp),
     )
 }
 
@@ -172,8 +175,8 @@ private fun BoxScope.Now() {
     Text(
         text = stringResource(R.string.countdown_now),
         style = MaterialTheme.typography.displayLarge,
-        fontSize = 168.sp,
-        lineHeight = 168.sp,
+        fontSize = 120.sp,
+        lineHeight = 120.sp,
         fontStyle = FontStyle.Italic,
         color = accent,
         maxLines = 1,
