@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -29,7 +30,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
@@ -37,6 +40,8 @@ import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.audio.VideoFrame
 import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.audio.rememberVideoFrame
+import com.olinix.audioguest.data.Delivery
+import com.olinix.audioguest.data.DeliveryChannel
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.settings.HostSettings
@@ -47,6 +52,7 @@ import com.olinix.audioguest.ui.components.PillStyle
 import com.olinix.audioguest.ui.components.ProgressBar
 import com.olinix.audioguest.ui.components.Waveform
 import com.olinix.audioguest.ui.theme.AmberLight
+import com.olinix.audioguest.ui.theme.Charcoal
 import com.olinix.audioguest.ui.theme.DialogScrim
 import com.olinix.audioguest.ui.theme.Ivory
 import com.olinix.audioguest.ui.theme.RecordRedLight
@@ -63,6 +69,10 @@ class MessageActions(
     val recordings: List<Recording>,
     val fileOf: (Recording) -> File,
     val onDelete: (Long) -> Unit,
+    /** Who asked to receive each message, by message id. */
+    val deliveries: Map<Long, Delivery> = emptyMap(),
+    /** Ticks a request off as sent by hand, or back to "to send". */
+    val onMarkSent: (Long, Boolean) -> Unit = { _, _ -> },
 )
 
 /**
@@ -88,6 +98,16 @@ fun LazyListScope.messageItems(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(stringResource(R.string.host_messages_hint), fontSize = 20.sp, color = Sand, style = MaterialTheme.typography.bodyMedium)
+            val toSend = messages.deliveries.values.count { it.sentAt == null }
+            if (toSend > 0) {
+                Text(
+                    text = pluralStringResource(R.plurals.host_messages_to_send, toSend, toSend),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AmberLight,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
     }
     if (recordings.isEmpty()) {
@@ -102,6 +122,8 @@ fun LazyListScope.messageItems(
             recording = recording,
             file = messages.fileOf(recording),
             hidden = !settings.allows(recording.mode),
+            delivery = messages.deliveries[recording.id],
+            onMarkSent = messages.onMarkSent,
             onPlay = { onPlay(recording) },
             onDelete = { onDelete(recording) },
         )
@@ -110,7 +132,15 @@ fun LazyListScope.messageItems(
 
 /** [video frame or mic] Mensaje de video · 3 nov · 21:42 · 0:35  [▶] [🗑] */
 @Composable
-private fun MessageRow(recording: Recording, file: File, hidden: Boolean, onPlay: () -> Unit, onDelete: () -> Unit) {
+private fun MessageRow(
+    recording: Recording,
+    file: File,
+    hidden: Boolean,
+    delivery: Delivery?,
+    onMarkSent: (Long, Boolean) -> Unit,
+    onPlay: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val accent = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(24.dp)
     Row(
@@ -152,6 +182,7 @@ private fun MessageRow(recording: Recording, file: File, hidden: Boolean, onPlay
             if (hidden) {
                 Text(stringResource(R.string.host_messages_hidden), fontSize = 18.sp, color = AmberLight, style = MaterialTheme.typography.bodyMedium)
             }
+            if (delivery != null) DeliveryLine(delivery, onMarkSent)
         }
         AccentCircle(icon = R.drawable.ic_play, size = 72.dp, iconSize = 28.dp, onClick = onPlay, contentDescription = stringResource(R.string.host_messages_play))
         Box(
@@ -163,6 +194,53 @@ private fun MessageRow(recording: Recording, file: File, hidden: Boolean, onPlay
             contentAlignment = Alignment.Center,
         ) {
             Icon(painterResource(R.drawable.ic_trash), contentDescription = stringResource(R.string.host_messages_delete), tint = RecordRedLight, modifier = Modifier.size(28.dp))
+        }
+    }
+}
+
+/** "✉ ana@mail.com · Aceita novidades" and the "Por enviar / Enviado" tick the host sets by hand. */
+@Composable
+private fun DeliveryLine(delivery: Delivery, onMarkSent: (Long, Boolean) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val sent = delivery.sentAt != null
+    Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painterResource(if (delivery.channel == DeliveryChannel.EMAIL) R.drawable.ic_mail else R.drawable.ic_chat),
+                contentDescription = null,
+                tint = Ivory,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                text = delivery.address,
+                fontSize = 20.sp,
+                color = Ivory,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (delivery.wantsNews) {
+                Text("· " + stringResource(R.string.host_messages_news), fontSize = 18.sp, color = Sand, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(percent = 50))
+                .then(if (sent) Modifier.background(accent) else Modifier.border(1.5.dp, AmberLight, RoundedCornerShape(percent = 50)))
+                .toggleable(value = sent, role = Role.Checkbox) { onMarkSent(delivery.id, it) }
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (sent) Icon(painterResource(R.drawable.ic_check), contentDescription = null, tint = Charcoal, modifier = Modifier.size(18.dp))
+            Text(
+                text = stringResource(if (sent) R.string.host_messages_sent else R.string.host_messages_not_sent),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (sent) Charcoal else AmberLight,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }

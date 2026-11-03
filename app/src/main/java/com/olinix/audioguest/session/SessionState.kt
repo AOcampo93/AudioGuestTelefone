@@ -52,8 +52,17 @@ sealed class SessionState {
     /** Play back before saving: Save · Retry · Discard. [file] is still pending until saved. */
     data class Review(val mode: RecordingMode, val durationSeconds: Int, val file: File, val hostVideo: HostVideo? = null) : SessionState()
 
-    /** "¡Gracias!" and automatic return to Idle. [shareFile] is the saved message, when the host lets guests share it. */
-    data class Saved(val secondsLeft: Int, val totalSeconds: Int, val shareFile: File? = null) : SessionState()
+    /**
+     * "¡Gracias!" and automatic return to Idle. [recordingId] is the message just saved, when the
+     * host lets guests ask to receive it.
+     */
+    data class Saved(val secondsLeft: Int, val totalSeconds: Int, val recordingId: Long? = null) : SessionState()
+
+    /** "Receber a minha mensagem": the guest types an e-mail or a WhatsApp number. */
+    data class DeliveryForm(val recordingId: Long) : SessionState()
+
+    /** "Pronto!", repeating where the message will go, then back to Idle. */
+    data class DeliveryDone(val address: String, val secondsLeft: Int, val totalSeconds: Int) : SessionState()
 
     /** "Mensajes del evento", showing the messages under one tab. */
     data class Gallery(val filter: GalleryFilter = GalleryFilter.ALL) : SessionState()

@@ -44,10 +44,10 @@ import com.olinix.audioguest.ui.theme.Taupe
 
 /**
  * Screen 9 · "¡Gracias!" with a gold check, then back to Idle on its own.
- * When the host allows it, "Compartir mi mensaje" opens Android's share sheet.
+ * When the host allows it, "Receber a minha mensagem" asks for an e-mail or a WhatsApp number.
  */
 @Composable
-fun SavedScreen(state: SessionState.Saved, event: EventInfo, modifier: Modifier = Modifier, onShare: () -> Unit = {}) {
+fun SavedScreen(state: SessionState.Saved, event: EventInfo, modifier: Modifier = Modifier, onReceive: () -> Unit = {}) {
     val accent = MaterialTheme.colorScheme.primary
     val pop = remember { Animatable(0.55f) }
     LaunchedEffect(Unit) {
@@ -91,12 +91,12 @@ fun SavedScreen(state: SessionState.Saved, event: EventInfo, modifier: Modifier 
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(top = 24.dp),
             )
-            if (state.shareFile != null) {
+            if (state.recordingId != null) {
                 PillButton(
-                    text = stringResource(R.string.saved_share),
-                    onClick = onShare,
+                    text = stringResource(R.string.saved_receive),
+                    onClick = onReceive,
                     style = PillStyle.OUTLINE,
-                    icon = R.drawable.ic_share,
+                    icon = R.drawable.ic_mail,
                     borderColor = accent.copy(alpha = 0.6f),
                     contentColor = accent,
                     modifier = Modifier.padding(top = 56.dp),

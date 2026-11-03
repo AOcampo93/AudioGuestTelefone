@@ -4,6 +4,8 @@ import android.app.Application
 import com.olinix.audioguest.audio.EventStorage
 import com.olinix.audioguest.camera.FrontCameraRecorder
 import com.olinix.audioguest.data.AudioGuestDatabase
+import com.olinix.audioguest.data.DeliveryRepository
+import com.olinix.audioguest.data.LocalDeliveryRepository
 import com.olinix.audioguest.data.EventRepository
 import com.olinix.audioguest.data.LocalEventRepository
 import com.olinix.audioguest.settings.DeviceStore
@@ -20,4 +22,6 @@ class AudioGuestApplication : Application() {
     val storage: EventStorage by lazy { EventStorage(filesDir) }
 
     val events: EventRepository by lazy { LocalEventRepository(database.events(), DeviceStore(this), storage) }
+
+    val deliveries: DeliveryRepository by lazy { LocalDeliveryRepository(database.deliveries()) }
 }

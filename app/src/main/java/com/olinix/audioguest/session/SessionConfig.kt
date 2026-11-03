@@ -11,10 +11,10 @@ data class SessionConfig(
     val hostInactivitySeconds: Int = 120,
     /** How long the "¡Gracias!" screen stays before returning to Idle. */
     val savedSeconds: Int = 5,
-    /** Longer when the guest may share the message, so there is time to find the button. */
-    val savedSecondsWithSharing: Int = 10,
-    /** If the share sheet has not covered the app by then, Android refused to open it. */
-    val shareOpenSeconds: Int = 3,
+    /** Longer when the guest may ask to receive the message, so there is time to find the button. */
+    val savedSecondsWithDelivery: Int = 15,
+    /** How long "Pronto!" stays after the guest left their e-mail or WhatsApp. */
+    val deliveryDoneSeconds: Int = 8,
     /**
      * Without the handset the app shows "Conecta el auricular" and records nothing.
      * Turned off only on the emulator, which cannot plug in a USB handset.

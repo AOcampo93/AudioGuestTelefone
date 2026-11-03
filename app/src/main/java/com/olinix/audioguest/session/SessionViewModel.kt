@@ -7,6 +7,9 @@ import com.olinix.audioguest.audio.MessageRecorder
 import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.RecordingFiles
 import com.olinix.audioguest.audio.SoundOutput
+import com.olinix.audioguest.data.Delivery
+import com.olinix.audioguest.data.DeliveryChannel
+import com.olinix.audioguest.data.DeliveryRepository
 import com.olinix.audioguest.data.Event
 import com.olinix.audioguest.data.EventRepository
 import com.olinix.audioguest.data.EventSummary
@@ -46,6 +49,7 @@ class SessionViewModel(
     private val storage: EventStorage,
     private val repository: RecordingRepository,
     private val events: EventRepository,
+    private val deliveries: DeliveryRepository,
     /** Whether the handset is plugged in, updated as it changes. */
     handsetConnected: Flow<Boolean>,
     private val config: SessionConfig = SessionConfig(),
@@ -69,6 +73,11 @@ class SessionViewModel(
     /** The active event's saved messages, newest first. Loaded right away so the gallery opens already filled. */
     val recordings: StateFlow<List<Recording>> = _activeEventId.filterNotNull()
         .flatMapLatest { id -> repository.recordings(id) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Who asked to receive which message in the active event, oldest first. */
+    val deliveryList: StateFlow<List<Delivery>> = _activeEventId.filterNotNull()
+        .flatMapLatest { id -> deliveries.deliveries(id) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Every event, newest first, for the panel. */
@@ -115,9 +124,6 @@ class SessionViewModel(
 
     /** The camera opening during a video countdown. */
     private var preparing: Job? = null
-
-    /** The guest opened the share sheet from "¡Gracias!", which waits for them to come back. */
-    private var sharing = false
 
     /** Digits typed on the host PIN pad. Kept here, not in the state, so the screen never holds the PIN. */
     private var typedPin = ""
@@ -189,7 +195,7 @@ class SessionViewModel(
                 timerJob?.cancel()
                 moveTo(SessionState.Idle)
             }
-            SessionState.Menu, SessionState.CallIntro -> moveTo(SessionState.Idle)
+            SessionState.Menu, SessionState.CallIntro, is SessionState.DeliveryForm -> moveTo(SessionState.Idle)
             SessionState.Welcome -> moveTo(SessionState.Menu)
             // Turning the call down: it rings again at the next call.
             SessionState.Ringing -> {
@@ -213,9 +219,9 @@ class SessionViewModel(
         if (_state.value == SessionState.Menu) _microphone.value = microphone
     }
 
-    /** "Auricular" or "Altavoz" in the player. The message keeps playing, now through the other one. */
+    /** "Auricular" or "Altavoz" wherever a message plays back. It keeps playing, now through the other one. */
     fun choosePlayerSound(sound: SoundOutput) {
-        if (_state.value is SessionState.Player) _playerSound.value = sound
+        if (_state.value is SessionState.Player || _state.value is SessionState.Review) _playerSound.value = sound
     }
 
     fun openGallery() {
@@ -254,40 +260,54 @@ class SessionViewModel(
             moveTo(SessionState.HostPanel(kind.section))
             return
         }
-        val kept = files.keep(review.file)
-        val shareFile = kept.takeIf { _settings.value.allowSharing }
         val eventId = activeEvent?.id ?: return
+        val kept = files.keep(review.file)
+        val offerDelivery = _settings.value.allowSharing
         runTimer {
-            repository.add(eventId, review.mode, kept, review.durationSeconds)
-            thankGuest(if (shareFile != null) config.savedSecondsWithSharing else config.savedSeconds, shareFile)
+            val recording = repository.add(eventId, review.mode, kept, review.durationSeconds)
+            if (offerDelivery) thankGuest(config.savedSecondsWithDelivery, recording.id) else thankGuest(config.savedSeconds, null)
         }
     }
 
-    /** "Compartir mi mensaje": the countdown stops while the guest is in Android's share sheet. */
-    fun pauseForSharing() {
+    /** "Receber a minha mensagem" on the thanks screen. */
+    fun askForDelivery() {
         val saved = _state.value as? SessionState.Saved ?: return
-        if (saved.shareFile == null) return
-        sharing = true
-        // Normally cancelled by onAppPaused. If the sheet never opens (Android may refuse while
-        // the app is pinned), the countdown carries on instead of waiting forever.
-        runTimer {
-            delay(config.shareOpenSeconds * ONE_SECOND)
-            sharing = false
-            thankGuest(saved.totalSeconds, saved.shareFile)
+        val recordingId = saved.recordingId ?: return
+        timerJob?.cancel()
+        moveTo(SessionState.DeliveryForm(recordingId))
+    }
+
+    /**
+     * "Enviar": keeps who wants the message, for the host to send by hand later. Returns false,
+     * keeping the form open, when [address] does not look like an e-mail or a phone number.
+     */
+    fun submitDelivery(channel: DeliveryChannel, address: String, wantsNews: Boolean): Boolean {
+        val form = _state.value as? SessionState.DeliveryForm ?: return false
+        if (!channel.accepts(address)) return false
+        val event = activeEvent ?: return false
+        val recording = recordings.value.firstOrNull { it.id == form.recordingId } ?: return false
+        val typed = address.trim()
+        viewModelScope.launch {
+            deliveries.add(
+                Delivery(
+                    eventId = event.id,
+                    recordingId = recording.id,
+                    fileName = recording.fileName,
+                    channel = channel,
+                    address = typed,
+                    wantsNews = wantsNews,
+                    createdAt = System.currentTimeMillis(),
+                )
+            )
         }
-    }
-
-    /** Another screen covered the app, such as the share sheet. */
-    fun onAppPaused() {
-        if (sharing) timerJob?.cancel()
-    }
-
-    /** The app is in front again. After sharing, "¡Gracias!" counts down from the start. */
-    fun onAppResumed() {
-        if (!sharing) return
-        sharing = false
-        val saved = _state.value as? SessionState.Saved ?: return
-        runTimer { thankGuest(saved.totalSeconds, saved.shareFile) }
+        runTimer {
+            for (left in config.deliveryDoneSeconds downTo 1) {
+                moveTo(SessionState.DeliveryDone(typed, left, config.deliveryDoneSeconds))
+                delay(ONE_SECOND)
+            }
+            moveTo(SessionState.Idle)
+        }
+        return true
     }
 
     fun retry() {
@@ -398,6 +418,13 @@ class SessionViewModel(
         }
     }
 
+    /** The host ticked a request in Mensajes as sent, or back to "to send". */
+    fun markDelivered(deliveryId: Long, sent: Boolean) {
+        if (_state.value !is SessionState.HostPanel) return
+        viewModelScope.launch { deliveries.setSent(deliveryId, sent) }
+        restartInactivityTimer()
+    }
+
     /** "Usar" in the panel's list of events: the booth records into that one from now on. */
     fun switchEvent(eventId: Long) {
         if (_state.value !is SessionState.HostPanel || eventId == activeEvent?.id) return
@@ -435,6 +462,7 @@ class SessionViewModel(
         val recording = recordings.value.firstOrNull { it.id == recordingId } ?: return
         viewModelScope.launch {
             repository.delete(recording)
+            deliveries.deleteForRecording(recording.id)
             files.discard(files.fileFor(recording))
         }
         restartInactivityTimer()
@@ -530,10 +558,10 @@ class SessionViewModel(
         }
     }
 
-    /** "¡Gracias!" for [seconds], then back to the invitation. */
-    private suspend fun thankGuest(seconds: Int, shareFile: File?) {
+    /** "¡Gracias!" for [seconds], then back to the invitation. With a [recordingId], the guest may ask to receive it. */
+    private suspend fun thankGuest(seconds: Int, recordingId: Long?) {
         for (left in seconds downTo 1) {
-            moveTo(SessionState.Saved(secondsLeft = left, totalSeconds = seconds, shareFile = shareFile))
+            moveTo(SessionState.Saved(secondsLeft = left, totalSeconds = seconds, recordingId = recordingId))
             delay(ONE_SECOND)
         }
         moveTo(SessionState.Idle)
@@ -691,7 +719,7 @@ class SessionViewModel(
      * The host screens expire too, so a panel left open does not stay within a guest's reach.
      */
     private fun expiresWhenUnattended(state: SessionState): Boolean = when (state) {
-        SessionState.Menu, is SessionState.Gallery, is SessionState.Review,
+        SessionState.Menu, is SessionState.Gallery, is SessionState.Review, is SessionState.DeliveryForm,
         is SessionState.Player, is SessionState.Error,
         is SessionState.HostLogin, is SessionState.HostPanel,
         // If the host's video cannot play, guests are not left in front of a still picture.

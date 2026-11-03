@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -50,7 +51,8 @@ import com.olinix.audioguest.ui.player.PlayerScreen
 import com.olinix.audioguest.ui.recording.RecordingScreen
 import com.olinix.audioguest.ui.review.ReviewScreen
 import com.olinix.audioguest.ui.saved.SavedScreen
-import com.olinix.audioguest.ui.saved.shareMessage
+import com.olinix.audioguest.ui.delivery.DeliveryDoneScreen
+import com.olinix.audioguest.ui.delivery.DeliveryFormScreen
 import com.olinix.audioguest.ui.show.ShowScreen
 import com.olinix.audioguest.ui.hostvideo.HostVideoScreen
 import com.olinix.audioguest.ui.call.RingingScreen
@@ -78,6 +80,7 @@ fun AudioGuestApp(
     val microphone by viewModel.microphone.collectAsStateWithLifecycle()
     val playerSound by viewModel.playerSound.collectAsStateWithLifecycle()
     val eventList by viewModel.eventList.collectAsStateWithLifecycle()
+    val deliveryList by viewModel.deliveryList.collectAsStateWithLifecycle()
     val activeEventId by viewModel.activeEventId.collectAsStateWithLifecycle()
     val event = eventInfoOf(settings)
     val context = LocalContext.current
@@ -190,17 +193,16 @@ fun AudioGuestApp(
                     onRetry = viewModel::retry,
                     onDiscard = viewModel::discard,
                     onPlayingChange = viewModel::onPlaybackChanged,
+                    sound = playerSound,
+                    onSound = viewModel::choosePlayerSound,
                 )
-                is SessionState.Saved -> {
-                    val subject = stringResource(R.string.share_subject, event.hosts)
-                    val title = stringResource(R.string.saved_share)
-                    SavedScreen(current, event, onShare = {
-                        current.shareFile?.let { file ->
-                            viewModel.pauseForSharing()
-                            shareMessage(context, file, subject, title)
-                        }
-                    })
-                }
+                is SessionState.Saved -> SavedScreen(current, event, onReceive = viewModel::askForDelivery)
+                is SessionState.DeliveryForm -> DeliveryFormScreen(
+                    onSubmit = viewModel::submitDelivery,
+                    onBack = viewModel::back,
+                    onTyping = viewModel::onUserInteraction,
+                )
+                is SessionState.DeliveryDone -> DeliveryDoneScreen(current)
                 is SessionState.Gallery -> GalleryScreen(
                     event = event,
                     recordings = guestRecordings,
@@ -231,7 +233,8 @@ fun AudioGuestApp(
                     onErase = viewModel::erasePinDigit,
                     onBack = viewModel::back,
                 )
-                is SessionState.HostPanel -> HostPanelScreen(
+                // Keyed by event, so its text fields start from the event's own names, not the last one's.
+                is SessionState.HostPanel -> key(activeEventId) { HostPanelScreen(
                     state = current,
                     settings = settings,
                     event = event,
@@ -246,6 +249,8 @@ fun AudioGuestApp(
                         recordings = recordings,
                         fileOf = viewModel::fileOf,
                         onDelete = viewModel::deleteRecording,
+                        deliveries = deliveryList.associateBy { it.recordingId },
+                        onMarkSent = viewModel::markDelivered,
                     ),
                     events = EventActions(
                         events = eventList,
@@ -254,7 +259,7 @@ fun AudioGuestApp(
                         onCreate = viewModel::createEvent,
                         onDelete = viewModel::deleteEvent,
                     ),
-                )
+                ) }
             }
         }
 

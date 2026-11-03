@@ -4,6 +4,9 @@ import com.olinix.audioguest.audio.MessageRecorder
 import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.EventStorage
 import com.olinix.audioguest.audio.SoundOutput
+import com.olinix.audioguest.data.Delivery
+import com.olinix.audioguest.data.DeliveryChannel
+import com.olinix.audioguest.data.DeliveryRepository
 import com.olinix.audioguest.data.Event
 import com.olinix.audioguest.data.EventRepository
 import com.olinix.audioguest.data.EventSummary
@@ -53,6 +56,7 @@ class SessionViewModelTest {
     private val video = FakeRecorder()
     private val repository = FakeRepository()
     private val events = FakeEvents()
+    private val deliveries = FakeDeliveries()
     private val handset = MutableStateFlow(true)
     private lateinit var recordings: File
     private lateinit var viewModel: SessionViewModel
@@ -60,7 +64,7 @@ class SessionViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        viewModel = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, handset)
+        viewModel = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, deliveries, handset)
         // The active event loads in the background; tests start once it has.
         dispatcher.scheduler.runCurrent()
         recordings = File(folder.root, "events/1/recordings")
@@ -156,8 +160,8 @@ class SessionViewModelTest {
 
         viewModel.save()
         runCurrent()
-        // Sharing is allowed by default, so "¡Gracias!" offers the file and stays a little longer.
-        assertEquals(SessionState.Saved(secondsLeft = 10, totalSeconds = 10, shareFile = savedFiles().single()), viewModel.state.value)
+        // Guests may ask to receive their message by default, so "¡Gracias!" offers it and stays a little longer.
+        assertEquals(SessionState.Saved(secondsLeft = 15, totalSeconds = 15, recordingId = 1), viewModel.state.value)
         assertFalse(pending.exists())
         assertEquals(1, savedFiles().size)
 
@@ -165,45 +169,59 @@ class SessionViewModelTest {
         assertEquals(RecordingMode.AUDIO, saved.mode)
         assertEquals(savedFiles().single(), viewModel.fileOf(saved))
 
-        waitSeconds(10)
+        waitSeconds(15)
         assertEquals(SessionState.Idle, viewModel.state.value)
     }
 
     @Test
-    fun theThanksScreenWaitsWhileTheGuestShares() = runTest(dispatcher) {
+    fun aGuestLeavesAnEmailToReceiveTheirMessage() = runTest(dispatcher) {
         startRecording(RecordingMode.VIDEO)
         finish()
         viewModel.save()
-        waitSeconds(2)
-
-        viewModel.pauseForSharing()
-        viewModel.onAppPaused()
-        waitSeconds(120)
-        assertTrue(viewModel.state.value is SessionState.Saved)
-
-        // Back from the share sheet, the countdown starts again from the top.
-        viewModel.onAppResumed()
         runCurrent()
-        assertEquals(10, (viewModel.state.value as SessionState.Saved).secondsLeft)
-        waitSeconds(10)
+        val saved = viewModel.recordings.value.single()
+
+        viewModel.askForDelivery()
+        assertEquals(SessionState.DeliveryForm(saved.id), viewModel.state.value)
+
+        // A typo keeps the form open.
+        assertFalse(viewModel.submitDelivery(DeliveryChannel.EMAIL, "ana@mail", wantsNews = false))
+        assertEquals(SessionState.DeliveryForm(saved.id), viewModel.state.value)
+
+        assertTrue(viewModel.submitDelivery(DeliveryChannel.EMAIL, " ana@mail.pt ", wantsNews = false))
+        runCurrent()
+        assertEquals(SessionState.DeliveryDone("ana@mail.pt", 8, 8), viewModel.state.value)
+        val delivery = viewModel.deliveryList.value.single()
+        assertEquals(saved.id, delivery.recordingId)
+        assertEquals(saved.fileName, delivery.fileName)
+        assertEquals(DeliveryChannel.EMAIL, delivery.channel)
+        assertFalse(delivery.wantsNews)
+        assertNull(delivery.sentAt)
+
+        waitSeconds(8)
         assertEquals(SessionState.Idle, viewModel.state.value)
     }
 
     @Test
-    fun aShareSheetThatNeverOpensDoesNotStopTheCountdown() = runTest(dispatcher) {
+    fun theFormWaitsWhileTheGuestTypes() = runTest(dispatcher) {
         startRecording(RecordingMode.AUDIO)
         finish()
         viewModel.save()
         runCurrent()
+        viewModel.askForDelivery()
 
-        // Android refused to open it, so the app was never covered.
-        viewModel.pauseForSharing()
-        waitSeconds(3 + 10)
+        // Typing does not touch the screen; the form counts it as activity.
+        waitSeconds(29)
+        viewModel.onUserInteraction()
+        waitSeconds(29)
+        assertTrue(viewModel.state.value is SessionState.DeliveryForm)
+        waitSeconds(1)
         assertEquals(SessionState.Idle, viewModel.state.value)
+        assertTrue(viewModel.deliveryList.value.isEmpty())
     }
 
     @Test
-    fun withoutSharingTheThanksScreenIsShort() = runTest(dispatcher) {
+    fun withoutTheOfferTheThanksScreenIsShort() = runTest(dispatcher) {
         openHostPanel()
         viewModel.updateSettings { it.copy(allowSharing = false) }
         viewModel.back()
@@ -213,10 +231,39 @@ class SessionViewModelTest {
         runCurrent()
         assertEquals(SessionState.Saved(secondsLeft = 5, totalSeconds = 5), viewModel.state.value)
 
-        viewModel.pauseForSharing()
-        viewModel.onAppPaused()
+        viewModel.askForDelivery()
+        assertTrue(viewModel.state.value is SessionState.Saved)
         waitSeconds(5)
         assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
+    @Test
+    fun theHostTicksOffWhatWasSent() = runTest(dispatcher) {
+        startRecording(RecordingMode.AUDIO)
+        finish()
+        viewModel.save()
+        runCurrent()
+        viewModel.askForDelivery()
+        viewModel.submitDelivery(DeliveryChannel.WHATSAPP, "+351 912 345 678", wantsNews = true)
+        waitSeconds(8)
+        val delivery = viewModel.deliveryList.value.single()
+        assertTrue(delivery.wantsNews)
+
+        // Only from the panel.
+        viewModel.markDelivered(delivery.id, sent = true)
+        runCurrent()
+        assertNull(viewModel.deliveryList.value.single().sentAt)
+
+        openHostPanel()
+        viewModel.showHostSection(HostSection.MESSAGES)
+        viewModel.markDelivered(delivery.id, sent = true)
+        runCurrent()
+        assertNotNull(viewModel.deliveryList.value.single().sentAt)
+
+        // Deleting the message forgets who wanted it.
+        viewModel.deleteRecording(delivery.recordingId)
+        runCurrent()
+        assertTrue(viewModel.deliveryList.value.isEmpty())
     }
 
     @Test
@@ -344,7 +391,7 @@ class SessionViewModelTest {
     fun theEmulatorCanRunWithoutAHandset() = runTest(dispatcher) {
         handset.value = false
         val emulator = SessionViewModel(
-            lights, voice, video, EventStorage(folder.root), repository, events, handset,
+            lights, voice, video, EventStorage(folder.root), repository, events, deliveries, handset,
             SessionConfig(requireHandset = false),
         )
         runCurrent()
@@ -446,7 +493,7 @@ class SessionViewModelTest {
     @Test
     fun savedSettingsAreLoadedAtStart() = runTest(dispatcher) {
         events.stored.value = listOf(Event(id = 1, createdAt = 0, settings = HostSettings(type = EventType.BIRTHDAY, birthdayName = "Lucía")))
-        val restarted = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, handset)
+        val restarted = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, deliveries, handset)
         runCurrent()
         assertEquals("Lucía", restarted.settings.value.hosts)
     }
@@ -656,7 +703,7 @@ class SessionViewModelTest {
         startRecording(RecordingMode.AUDIO)
         finish()
         viewModel.save()
-        waitSeconds(10)
+        waitSeconds(15)
         val saved = viewModel.recordings.value.single()
         assertTrue(viewModel.fileOf(saved).exists())
 
@@ -694,7 +741,7 @@ class SessionViewModelTest {
         waitSeconds(4)
         finish()
         viewModel.save()
-        waitSeconds(10)
+        waitSeconds(15)
         assertEquals(RecordingMode.AUDIO, viewModel.recordings.value.single().mode)
         assertEquals(SessionState.Idle, viewModel.state.value)
 
@@ -857,13 +904,13 @@ class SessionViewModelTest {
         startRecording(RecordingMode.AUDIO)
         finish()
         viewModel.save()
-        waitSeconds(10)
+        waitSeconds(15)
     }
 
     /** Call mode on with a question video, and a booth whose calls come at the earliest moment allowed. */
     private fun TestScope.setUpCallMode() {
         viewModel = SessionViewModel(
-            lights, voice, video, EventStorage(folder.root), repository, events, handset, random = LowestRandom,
+            lights, voice, video, EventStorage(folder.root), repository, events, deliveries, handset, random = LowestRandom,
         )
         runCurrent()
         openHostPanel()
@@ -924,13 +971,34 @@ class SessionViewModelTest {
 
         override fun recordings(eventId: Long): Flow<List<Recording>> = saved.map { all -> all.filter { it.eventId == eventId } }
 
-        override suspend fun add(eventId: Long, mode: RecordingMode, file: File, durationSeconds: Int) {
+        override suspend fun add(eventId: Long, mode: RecordingMode, file: File, durationSeconds: Int): Recording {
             val id = (saved.value.maxOfOrNull { it.id } ?: 0) + 1
-            saved.value = listOf(Recording(id, eventId, mode, file.name, durationSeconds, savedAt = id)) + saved.value
+            val recording = Recording(id, eventId, mode, file.name, durationSeconds, savedAt = id)
+            saved.value = listOf(recording) + saved.value
+            return recording
         }
 
         override suspend fun delete(recording: Recording) {
             saved.value = saved.value.filterNot { it.id == recording.id }
+        }
+    }
+
+    /** Keeps the guests' requests in a list instead of a database. */
+    private class FakeDeliveries : DeliveryRepository {
+        val stored = MutableStateFlow<List<Delivery>>(emptyList())
+
+        override fun deliveries(eventId: Long): Flow<List<Delivery>> = stored.map { all -> all.filter { it.eventId == eventId } }
+
+        override suspend fun add(delivery: Delivery) {
+            stored.value += delivery.copy(id = (stored.value.maxOfOrNull { it.id } ?: 0) + 1)
+        }
+
+        override suspend fun setSent(id: Long, sent: Boolean) {
+            stored.value = stored.value.map { if (it.id == id) it.copy(sentAt = if (sent) 1L else null) else it }
+        }
+
+        override suspend fun deleteForRecording(recordingId: Long) {
+            stored.value = stored.value.filterNot { it.recordingId == recordingId }
         }
     }
 

@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
 import com.olinix.audioguest.audio.VideoFrame
+import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionState
@@ -41,6 +42,7 @@ import com.olinix.audioguest.ui.components.AccentCircle
 import com.olinix.audioguest.ui.components.CameraBackdrop
 import com.olinix.audioguest.ui.components.ConfirmDialog
 import com.olinix.audioguest.ui.components.PillButton
+import com.olinix.audioguest.ui.components.SoundToggle
 import com.olinix.audioguest.ui.components.PillStyle
 import com.olinix.audioguest.ui.components.ProgressBar
 import com.olinix.audioguest.ui.components.Waveform
@@ -54,7 +56,10 @@ import com.olinix.audioguest.ui.theme.Taupe
 import com.olinix.audioguest.util.formatDuration
 import java.io.File
 
-/** Screen 8 · "¿Te gusta cómo quedó?" Save, retry or discard (with confirmation). */
+/**
+ * Screen 8 · "¿Te gusta cómo quedó?" Save, retry or discard (with confirmation).
+ * The guest hears it back through the handset or the tablet's speaker, as they pick.
+ */
 @Composable
 fun ReviewScreen(
     state: SessionState.Review,
@@ -63,6 +68,8 @@ fun ReviewScreen(
     onDiscard: () -> Unit,
     onPlayingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    sound: SoundOutput = SoundOutput.HANDSET,
+    onSound: (SoundOutput) -> Unit = {},
 ) {
     var confirmingDiscard by remember { mutableStateOf(false) }
     val isVideo = state.mode == RecordingMode.VIDEO
@@ -80,15 +87,16 @@ fun ReviewScreen(
                 color = Sand,
                 modifier = Modifier.padding(top = 10.dp),
             )
+            SoundToggle(selected = sound, onSelect = onSound, modifier = Modifier.padding(top = 24.dp))
 
             Box(
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 40.dp),
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 32.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 if (isVideo) {
-                    VideoPreview(state.file, state.durationSeconds, onPlayingChange)
+                    VideoPreview(state.file, state.durationSeconds, sound, onPlayingChange)
                 } else {
-                    VoicePreview(state.file, state.durationSeconds, onPlayingChange)
+                    VoicePreview(state.file, state.durationSeconds, sound, onPlayingChange)
                 }
             }
 
@@ -136,9 +144,9 @@ fun ReviewScreen(
 
 /** Voice preview: the wave fills in as the message plays through the handset. */
 @Composable
-private fun VoicePreview(file: File, durationSeconds: Int, onPlayingChange: (Boolean) -> Unit) {
+private fun VoicePreview(file: File, durationSeconds: Int, sound: SoundOutput, onPlayingChange: (Boolean) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
-    val playback = rememberPlayback(file, onPlayingChange = onPlayingChange)
+    val playback = rememberPlayback(file, onPlayingChange = onPlayingChange, sound = sound)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -168,8 +176,8 @@ private fun VoicePreview(file: File, durationSeconds: Int, onPlayingChange: (Boo
 
 /** Video preview: the recording itself, played on screen. A tap anywhere on it plays or pauses. */
 @Composable
-private fun VideoPreview(file: File, durationSeconds: Int, onPlayingChange: (Boolean) -> Unit) {
-    val playback = rememberPlayback(file, onPlayingChange = onPlayingChange)
+private fun VideoPreview(file: File, durationSeconds: Int, sound: SoundOutput, onPlayingChange: (Boolean) -> Unit) {
+    val playback = rememberPlayback(file, onPlayingChange = onPlayingChange, sound = sound)
     Box(
         Modifier
             .fillMaxWidth()

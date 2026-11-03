@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
                     storage = app.storage,
                     repository = LocalRecordingRepository(app.database.recordings()),
                     events = app.events,
+                    deliveries = app.deliveries,
                     handsetConnected = Handset.connection(applicationContext),
                     config = config,
                 )
@@ -115,12 +116,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         keepPinned()
-        session.onAppResumed()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        session.onAppPaused()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {

@@ -59,8 +59,6 @@
     <string name="saved_for">Tu mensaje se guardó para %1$s</string>
     <string name="saved_hang_up">Vuelve a colgar el auricular</string>
     <string name="saved_back_in">Volviendo al inicio en %1$d s</string>
-    <string name="saved_share">Compartir mi mensaje</string>
-    <string name="share_subject">Mi mensaje para %1$s</string>
 
     <!-- Gallery -->
     <string name="gallery_title">Mensajes del evento</string>
@@ -147,7 +145,7 @@
     <string name="host_call_title">Modo llamada</string>
     <string name="host_call_body">La cabina suena y quien contesta responde a tu pregunta.</string>
     <string name="host_guests_title">Experiencia del invitado</string>
-    <string name="host_guests_body">Idioma, mensajes permitidos, galería, compartir y Modo Show.</string>
+    <string name="host_guests_body">Idioma, mensajes permitidos, galería, envío de mensajes y Modo Show.</string>
 
     <string name="host_event_type">Tipo de evento</string>
     <string name="host_type_wedding">Boda</string>
@@ -239,8 +237,8 @@
     <string name="host_allowed_body">El menú, «Ver grabaciones» y el Modo Show solo muestran los permitidos. Los demás no se borran: solo dejan de verse en la tablet.</string>
     <string name="host_show_messages">Mostrar los mensajes a los invitados</string>
     <string name="host_show_messages_body">Activa «Ver grabaciones» en el menú. Si lo apagas, los mensajes se guardan pero no se ven en la tablet.</string>
-    <string name="host_sharing">Permitir compartir</string>
-    <string name="host_sharing_body">En «¡Gracias!», el invitado puede enviarse su mensaje por Bluetooth, Quick Share o correo. Usa las apps y cuentas de esta tablet.</string>
+    <string name="host_sharing">Ofrecer recibir el mensaje</string>
+    <string name="host_sharing_body">En «¡Gracias!», el invitado puede dejar su correo o WhatsApp para recibir su mensaje. Tú lo envías a mano después, desde Mensajes.</string>
     <string name="host_show_mode">Modo Show</string>
     <string name="host_show_mode_body">Cuando nadie usa la cabina, reproduce al azar mensajes guardados para animar a otros a participar.</string>
     <string name="host_show_after">Empezar tras</string>
@@ -288,4 +286,27 @@
     <string name="host_exit_confirm_body">Los invitados no podrán dejar mensajes hasta que la vuelvas a abrir.</string>
     <string name="host_exit_keep">No, quedarme</string>
     <string name="host_exit_confirm">Sí, salir</string>
+
+    <!-- Receiving the message -->
+    <string name="saved_receive">Recibir mi mensaje</string>
+    <string name="delivery_title">Recibe tu mensaje</string>
+    <string name="delivery_body">Elige cómo quieres recibirlo.</string>
+    <string name="delivery_email">Correo</string>
+    <string name="delivery_whatsapp">WhatsApp</string>
+    <string name="delivery_email_hint">tu@correo.com</string>
+    <string name="delivery_email_invalid">Revisa el correo: parece que falta algo.</string>
+    <string name="delivery_phone_invalid">Revisa el número, con el prefijo del país.</string>
+    <string name="delivery_news">Quiero recibir novedades de Vokraft</string>
+    <string name="delivery_when">Te enviaremos tu mensaje en los próximos días.</string>
+    <string name="delivery_privacy">Usamos tu contacto solo para enviarte el mensaje y, si marcas la casilla, novedades.</string>
+    <string name="delivery_send">Enviar</string>
+    <string name="delivery_done_title">¡Listo!</string>
+    <string name="delivery_done_body">Te enviaremos tu mensaje a %1$s. El envío puede tardar algunos días.</string>
+    <string name="host_messages_sent">Enviado</string>
+    <string name="host_messages_not_sent">Por enviar</string>
+    <string name="host_messages_news">Acepta novedades</string>
+    <plurals name="host_messages_to_send">
+        <item quantity="one">%1$d mensaje por enviar</item>
+        <item quantity="other">%1$d mensajes por enviar</item>
+    </plurals>
 </resources>

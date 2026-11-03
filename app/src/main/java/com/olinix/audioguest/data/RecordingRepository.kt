@@ -10,8 +10,8 @@ interface RecordingRepository {
     /** One event's saved messages, newest first. */
     fun recordings(eventId: Long): Flow<List<Recording>>
 
-    /** Registers a file that was just kept. */
-    suspend fun add(eventId: Long, mode: RecordingMode, file: File, durationSeconds: Int)
+    /** Registers a file that was just kept, and returns it with its id. */
+    suspend fun add(eventId: Long, mode: RecordingMode, file: File, durationSeconds: Int): Recording
 
     /** Forgets a message. Its file is deleted separately. */
     suspend fun delete(recording: Recording)
@@ -24,8 +24,9 @@ class LocalRecordingRepository(
 
     override fun recordings(eventId: Long): Flow<List<Recording>> = dao.observe(eventId)
 
-    override suspend fun add(eventId: Long, mode: RecordingMode, file: File, durationSeconds: Int) {
-        dao.insert(Recording(eventId = eventId, mode = mode, fileName = file.name, durationSeconds = durationSeconds, savedAt = now()))
+    override suspend fun add(eventId: Long, mode: RecordingMode, file: File, durationSeconds: Int): Recording {
+        val recording = Recording(eventId = eventId, mode = mode, fileName = file.name, durationSeconds = durationSeconds, savedAt = now())
+        return recording.copy(id = dao.insert(recording))
     }
 
     override suspend fun delete(recording: Recording) {

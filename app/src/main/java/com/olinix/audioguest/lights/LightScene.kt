@@ -45,7 +45,8 @@ private const val LAST_SECONDS_WARNING = 10
 /** Which scene belongs to each session state. */
 fun lightSceneFor(state: SessionState): LightScene = when (state) {
     SessionState.Idle, is SessionState.Show -> LightScene.INVITATION
-    SessionState.Menu, is SessionState.Gallery, is SessionState.HostLogin, is SessionState.HostPanel -> LightScene.MENU
+    SessionState.Menu, is SessionState.Gallery, is SessionState.HostLogin, is SessionState.HostPanel,
+    is SessionState.DeliveryForm -> LightScene.MENU
     is SessionState.Countdown -> LightScene.COUNTDOWN
     is SessionState.Capturing -> when {
         state.remainingSeconds <= LAST_SECONDS_WARNING -> LightScene.LAST_SECONDS
@@ -54,6 +55,6 @@ fun lightSceneFor(state: SessionState): LightScene = when (state) {
     }
     is SessionState.Review, is SessionState.Player, SessionState.Welcome, SessionState.CallIntro -> LightScene.REVIEW
     SessionState.Ringing -> LightScene.RINGING
-    is SessionState.Saved -> LightScene.SAVED
+    is SessionState.Saved, is SessionState.DeliveryDone -> LightScene.SAVED
     is SessionState.Error -> LightScene.ERROR
 }

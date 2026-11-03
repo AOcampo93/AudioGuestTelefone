@@ -41,8 +41,6 @@
     <string name="saved_for">Your message was saved for %1$s</string>
     <string name="saved_hang_up">Please hang up the handset</string>
     <string name="saved_back_in">Back to start in %1$d s</string>
-    <string name="saved_share">Share my message</string>
-    <string name="share_subject">My message for %1$s</string>
     <string name="gallery_title">Event messages</string>
     <string name="gallery_tab_all">All</string>
     <string name="gallery_tab_voice">Voice</string>
@@ -116,7 +114,7 @@
     <string name="host_call_title">Call mode</string>
     <string name="host_call_body">The booth rings and whoever answers replies to your question.</string>
     <string name="host_guests_title">Guest experience</string>
-    <string name="host_guests_body">Language, allowed messages, gallery, sharing and Show mode.</string>
+    <string name="host_guests_body">Language, allowed messages, gallery, sending messages and Show mode.</string>
     <string name="host_event_type">Event type</string>
     <string name="host_type_wedding">Wedding</string>
     <string name="host_type_christmas">Christmas</string>
@@ -201,8 +199,8 @@
     <string name="host_allowed_body">The menu, “See messages” and Show mode only show the allowed ones. The others are not deleted, just hidden on the tablet.</string>
     <string name="host_show_messages">Show the messages to guests</string>
     <string name="host_show_messages_body">Turns on “See messages” in the menu. If off, messages are still saved but not shown on the tablet.</string>
-    <string name="host_sharing">Allow sharing</string>
-    <string name="host_sharing_body">On “Thank you!”, guests can send themselves their message by Bluetooth, Quick Share or e-mail. It uses this tablet’s apps and accounts.</string>
+    <string name="host_sharing">Offer to send the message</string>
+    <string name="host_sharing_body">On “Thank you!”, guests can leave their e-mail or WhatsApp to receive their message. You send it by hand later, from Messages.</string>
     <string name="host_show_mode">Show mode</string>
     <string name="host_show_mode_body">When nobody is using the booth, it plays saved messages at random to encourage others to take part.</string>
     <string name="host_show_after">Start after</string>
@@ -245,4 +243,27 @@
     <string name="host_exit_confirm_body">Guests won’t be able to leave messages until you open it again.</string>
     <string name="host_exit_keep">No, stay</string>
     <string name="host_exit_confirm">Yes, exit</string>
+
+    <!-- Receiving the message -->
+    <string name="saved_receive">Get my message</string>
+    <string name="delivery_title">Get your message</string>
+    <string name="delivery_body">Choose how you’d like to receive it.</string>
+    <string name="delivery_email">E-mail</string>
+    <string name="delivery_whatsapp">WhatsApp</string>
+    <string name="delivery_email_hint">you@email.com</string>
+    <string name="delivery_email_invalid">Please check the e-mail address.</string>
+    <string name="delivery_phone_invalid">Please check the number, with the country code.</string>
+    <string name="delivery_news">I’d like to hear news from Vokraft</string>
+    <string name="delivery_when">We’ll send you your message in the next few days.</string>
+    <string name="delivery_privacy">We only use your contact to send you the message and, if you tick the box, news.</string>
+    <string name="delivery_send">Send</string>
+    <string name="delivery_done_title">Done!</string>
+    <string name="delivery_done_body">We’ll send your message to %1$s. It may take a few days to arrive.</string>
+    <string name="host_messages_sent">Sent</string>
+    <string name="host_messages_not_sent">To send</string>
+    <string name="host_messages_news">Wants news</string>
+    <plurals name="host_messages_to_send">
+        <item quantity="one">%1$d message to send</item>
+        <item quantity="other">%1$d messages to send</item>
+    </plurals>
 </resources>

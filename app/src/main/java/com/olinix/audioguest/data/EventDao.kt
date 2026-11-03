@@ -29,12 +29,16 @@ abstract class EventDao {
     @Update
     abstract suspend fun update(event: Event)
 
-    /** The event and the rows of its messages, together or not at all. Its files are deleted separately. */
+    /** The event and the rows of its messages and requests, together or not at all. Its files are deleted separately. */
     @Transaction
     open suspend fun deleteWithMessages(id: Long) {
+        deleteDeliveries(id)
         deleteMessages(id)
         delete(id)
     }
+
+    @Query("DELETE FROM deliveries WHERE eventId = :eventId")
+    protected abstract suspend fun deleteDeliveries(eventId: Long)
 
     @Query("DELETE FROM recordings WHERE eventId = :eventId")
     protected abstract suspend fun deleteMessages(eventId: Long)

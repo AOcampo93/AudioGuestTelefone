@@ -41,8 +41,6 @@
     <string name="saved_for">Sua mensagem foi salva para %1$s</string>
     <string name="saved_hang_up">Coloque o fone de volta no lugar</string>
     <string name="saved_back_in">Voltando ao início em %1$d s</string>
-    <string name="saved_share">Compartilhar minha mensagem</string>
-    <string name="share_subject">Minha mensagem para %1$s</string>
     <string name="gallery_title">Mensagens do evento</string>
     <string name="gallery_tab_all">Todas</string>
     <string name="gallery_tab_voice">Voz</string>
@@ -119,7 +117,7 @@
     <string name="host_call_title">Modo chamada</string>
     <string name="host_call_body">A cabine toca e quem atende responde à sua pergunta.</string>
     <string name="host_guests_title">Experiência do convidado</string>
-    <string name="host_guests_body">Idioma, mensagens permitidas, galeria, compartilhamento e Modo Show.</string>
+    <string name="host_guests_body">Idioma, mensagens permitidas, galeria, envio de mensagens e Modo Show.</string>
     <string name="host_event_type">Tipo de evento</string>
     <string name="host_type_wedding">Casamento</string>
     <string name="host_type_christmas">Natal</string>
@@ -204,8 +202,8 @@
     <string name="host_allowed_body">O menu, “Ver gravações” e o Modo Show só mostram as permitidas. As outras não são apagadas: só deixam de aparecer no tablet.</string>
     <string name="host_show_messages">Mostrar as mensagens aos convidados</string>
     <string name="host_show_messages_body">Ativa “Ver gravações” no menu. Se desligar, as mensagens são salvas, mas não aparecem no tablet.</string>
-    <string name="host_sharing">Permitir compartilhar</string>
-    <string name="host_sharing_body">Em “Obrigado!”, o convidado pode enviar a mensagem para si por Bluetooth, Quick Share ou e-mail. Usa os apps e contas deste tablet.</string>
+    <string name="host_sharing">Oferecer o envio da mensagem</string>
+    <string name="host_sharing_body">Em “Obrigado!”, o convidado pode deixar o e-mail ou o WhatsApp para receber a mensagem. Depois envia-a à mão, a partir de Mensagens.</string>
     <string name="host_show_mode">Modo Show</string>
     <string name="host_show_mode_body">Quando ninguém usa a cabine, reproduz mensagens salvas ao acaso para animar outros a participar.</string>
     <string name="host_show_after">Começar após</string>
@@ -250,4 +248,28 @@
     <string name="host_exit_confirm_body">Os convidados não poderão deixar mensagens até você abri-lo de novo.</string>
     <string name="host_exit_keep">Não, ficar</string>
     <string name="host_exit_confirm">Sim, sair</string>
+
+    <!-- Receiving the message -->
+    <string name="saved_receive">Receber a minha mensagem</string>
+    <string name="delivery_title">Receba a sua mensagem</string>
+    <string name="delivery_body">Escolha como a quer receber.</string>
+    <string name="delivery_email">E-mail</string>
+    <string name="delivery_whatsapp">WhatsApp</string>
+    <string name="delivery_email_hint">o.seu@email.com</string>
+    <string name="delivery_email_invalid">Verifique o e-mail: parece faltar alguma coisa.</string>
+    <string name="delivery_phone_invalid">Verifique o número, com o indicativo do país.</string>
+    <string name="delivery_news">Quero receber novidades da Vokraft</string>
+    <string name="delivery_when">Vamos enviar a sua mensagem nos próximos dias.</string>
+    <string name="delivery_privacy">Usamos o seu contacto apenas para lhe enviar a mensagem e, se assinalar a opção, novidades.</string>
+    <string name="delivery_send">Enviar</string>
+    <string name="delivery_done_title">Pronto!</string>
+    <string name="delivery_done_body">Vamos enviar a sua mensagem para %1$s. O envio pode demorar alguns dias.</string>
+    <string name="host_messages_sent">Enviado</string>
+    <string name="host_messages_not_sent">Por enviar</string>
+    <string name="host_messages_news">Aceita novidades</string>
+    <plurals name="host_messages_to_send">
+        <item quantity="one">%1$d mensagem por enviar</item>
+        <item quantity="many">%1$d mensagens por enviar</item>
+        <item quantity="other">%1$d mensagens por enviar</item>
+    </plurals>
 </resources>
