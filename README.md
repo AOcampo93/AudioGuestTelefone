@@ -22,11 +22,15 @@ adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset f
 
 Guests cannot leave the app: it pins itself with Android's screen pinning, which the host confirms once when the app opens. If someone unpins it with the system gesture, the tablet locks. The host opens the panel by holding the top-right corner of the start screen for 3 seconds and typing the PIN (set in `SessionConfig`); from there "Salir de la app" unpins and closes it. While developing, add `--ez kiosk false` to skip the pinning.
 
-The panel has three sections, and every change is saved on the tablet at once (Jetpack DataStore):
+The panel has five sections, and every change is saved on the tablet at once (Jetpack DataStore):
 
 - **Evento**: the event type (wedding, Christmas, birthday, company or other), the names it asks for, the date and the accent color, with a live preview of the start screen.
-- **Bienvenida**: an optional welcome video of up to 30 seconds, recorded with the tablet or picked from its files, that plays before the menu.
-- **Invitados**: the language of the guest screens (Portuguese, Spanish or English), whether guests can see the saved messages, and show mode, which plays saved messages through the speaker while nobody uses the booth.
+- **Bienvenida**: an optional welcome video of up to 30 seconds, recorded with the tablet or picked from its files, that plays before the menu through the handset or the tablet speaker.
+- **Llamada**: call mode. Now and then, while nobody uses the booth, it rings like an old phone through the tablet speaker. Whoever answers (a tap or the handset button) hears the host's question video through the handset and records an answer. Unanswered calls ring again later.
+- **Invitados**: the language of the guest screens (Portuguese, Spanish or English), which messages guests may leave (voice, video or both), whether they can see the saved messages and share their own, and show mode, which plays saved messages through the speaker while nobody uses the booth.
+- **Mensajes**: every saved message, to play or delete. Guests cannot delete saved messages.
+
+Guests choose the microphone (handset or tablet) in the menu and where they hear saved messages (handset or speaker) in the player. After saving, "Compartir mi mensaje" opens Android's share sheet (Bluetooth, Quick Share, e-mail) with that one file.
 
 # Useful Websites
 
@@ -39,6 +43,8 @@ The panel has three sections, and every change is saved on the tablet at once (J
 - [DataStore](https://developer.android.com/topic/libraries/architecture/datastore)
 - [Per-app language preferences](https://developer.android.com/guide/topics/resources/app-languages)
 - [Lock task mode and screen pinning](https://developer.android.com/work/dpc/dedicated-devices/lock-task-mode)
+- [Sharing files with FileProvider](https://developer.android.com/training/secure-file-sharing/setup-sharing)
+- [AudioTrack](https://developer.android.com/reference/android/media/AudioTrack)
 
 # Future Work
 
