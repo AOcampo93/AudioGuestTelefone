@@ -47,4 +47,10 @@ sealed class SessionState {
 
     /** Something failed: a clear message and what to do. */
     data class Error(val reason: ErrorReason) : SessionState()
+
+    /** Host PIN pad, opened from a hidden corner of the invitation. [digits] says how many dots to fill. */
+    data class HostLogin(val digits: Int = 0, val wrongPin: Boolean = false) : SessionState()
+
+    /** Host panel, only reachable with the PIN. */
+    data object HostPanel : SessionState()
 }

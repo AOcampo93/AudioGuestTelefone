@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 val Charcoal = Color(0xFF17120E)
 val CharcoalWarm = Color(0xFF22190F)
 val Surface = Color(0xFF1A140F)
+val SurfaceDeep = Color(0xFF110D0A)
 val SurfaceRaised = Color(0xFF241B13)
 
 val Ivory = Color(0xFFF3EADF)

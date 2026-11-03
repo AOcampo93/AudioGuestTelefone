@@ -20,6 +20,8 @@ The app covers the screen with "Conecta el auricular" until the handset is plugg
 adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset false
 ```
 
+Guests cannot leave the app: it pins itself with Android's screen pinning, which the host confirms once when the app opens. If someone unpins it with the system gesture, the tablet locks. The host opens the panel by holding the top-right corner of the start screen for 3 seconds and typing the PIN (set in `SessionConfig`); from there "Salir de la app" unpins and closes it. While developing, add `--ez kiosk false` to skip the pinning.
+
 # Useful Websites
 
 - [Kotlin documentation](https://kotlinlang.org/docs/home.html)
@@ -28,12 +30,14 @@ adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset f
 - [Room persistence library](https://developer.android.com/training/data-storage/room)
 - [Media3 ExoPlayer](https://developer.android.com/media/media3/exoplayer)
 - [WLED JSON API](https://kno.wled.ge/interfaces/json-api/)
+- [Lock task mode and screen pinning](https://developer.android.com/work/dpc/dedicated-devices/lock-task-mode)
 
 # Future Work
 
 - LED strip control through a WLED controller (`WledLightController`)
 - Background upload to a server and a QR code / email link for each guest
-- Kiosk mode (Device Owner + Lock Task) and a PIN-protected host settings screen
+- Host settings in the panel: event details, welcome video and guest options, as in the mockups
+- Full kiosk mode as Device Owner on a tablet dedicated to events (starts on boot, no unpin gesture)
 - Portuguese and English UI translations
 
 Fonts: Cormorant Garamond and DM Sans, licensed under the SIL Open Font License (see `licenses/`).

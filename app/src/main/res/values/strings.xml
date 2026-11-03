@@ -89,4 +89,24 @@
     <string name="error_recording">No se pudo guardar la grabación</string>
     <string name="error_hint">Avisa al anfitrión si vuelve a pasar.</string>
     <string name="error_back_to_start">Volver al inicio</string>
+
+    <!-- Host access -->
+    <string name="host_login_title">Acceso del anfitrión</string>
+    <string name="host_login_body">Introduce tu PIN de 4 dígitos para configurar el evento.</string>
+    <string name="host_login_wrong">PIN incorrecto. Inténtalo de nuevo.</string>
+    <string name="host_login_erase">Borrar</string>
+    <string name="host_back_to_kiosk">Volver al kiosco</string>
+
+    <!-- Host panel -->
+    <string name="host_panel_title">Panel del anfitrión</string>
+    <string name="host_close">Cerrar y volver</string>
+    <string name="host_kiosk_title">Kiosco</string>
+    <string name="host_kiosk_body">Los invitados no pueden salir de la app.</string>
+    <string name="host_exit_title">Salir de la app</string>
+    <string name="host_exit_body">Quita la fijación y cierra la app. Para volver al kiosco, ábrela desde su icono.</string>
+    <string name="host_exit">Salir</string>
+    <string name="host_exit_confirm_title">¿Salir de la app?</string>
+    <string name="host_exit_confirm_body">Los invitados no podrán dejar mensajes hasta que la vuelvas a abrir.</string>
+    <string name="host_exit_keep">No, quedarme</string>
+    <string name="host_exit_confirm">Sí, salir</string>
 </resources>

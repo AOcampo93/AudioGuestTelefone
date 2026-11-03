@@ -62,6 +62,9 @@ class SessionViewModel(
     /** The camera opening during a video countdown. */
     private var preparing: Job? = null
 
+    /** Digits typed on the host PIN pad. Kept here, not in the state, so the screen never holds the PIN. */
+    private var typedPin = ""
+
     init {
         files.clearPending()
         moveTo(SessionState.Idle)
@@ -83,7 +86,7 @@ class SessionViewModel(
             SessionState.Menu -> moveTo(SessionState.Idle)
             is SessionState.Gallery -> moveTo(SessionState.Menu)
             is SessionState.Player -> moveTo(SessionState.Gallery(current.filter))
-            is SessionState.Error -> moveTo(SessionState.Idle)
+            is SessionState.Error, is SessionState.HostLogin, SessionState.HostPanel -> moveTo(SessionState.Idle)
             // Mid-recording and the other screens ignore the system back gesture.
             else -> Unit
         }
@@ -157,6 +160,32 @@ class SessionViewModel(
     fun onPlaybackChanged(playing: Boolean) {
         mediaPlaying = playing
         restartInactivityTimer()
+    }
+
+    /** The host held the hidden corner of the invitation. */
+    fun openHostLogin() {
+        if (_state.value != SessionState.Idle) return
+        typedPin = ""
+        moveTo(SessionState.HostLogin())
+    }
+
+    /** The PIN is checked as soon as the last digit is typed. A wrong one clears the pad. */
+    fun typePinDigit(digit: Int) {
+        if (_state.value !is SessionState.HostLogin) return
+        typedPin += digit
+        if (typedPin.length < config.hostPin.length) {
+            moveTo(SessionState.HostLogin(digits = typedPin.length))
+            return
+        }
+        val correct = typedPin == config.hostPin
+        typedPin = ""
+        moveTo(if (correct) SessionState.HostPanel else SessionState.HostLogin(wrongPin = true))
+    }
+
+    fun erasePinDigit() {
+        if (_state.value !is SessionState.HostLogin) return
+        typedPin = typedPin.dropLast(1)
+        moveTo(SessionState.HostLogin(digits = typedPin.length))
     }
 
     /** Live microphone loudness (0..1) for the recording wave. */
@@ -290,10 +319,14 @@ class SessionViewModel(
         }
     }
 
-    /** Screens that wait for the guest. Countdown, recording and "¡Gracias!" end on their own. */
+    /**
+     * Screens that wait for someone. Countdown, recording and "¡Gracias!" end on their own.
+     * The host screens expire too, so a panel left open does not stay within a guest's reach.
+     */
     private fun expiresWhenUnattended(state: SessionState): Boolean = when (state) {
         SessionState.Menu, is SessionState.Gallery, is SessionState.Review,
-        is SessionState.Player, is SessionState.Error -> true
+        is SessionState.Player, is SessionState.Error,
+        is SessionState.HostLogin, SessionState.HostPanel -> true
         else -> false
     }
 

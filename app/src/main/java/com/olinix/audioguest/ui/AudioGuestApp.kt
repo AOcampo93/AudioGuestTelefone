@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -30,6 +31,9 @@ import com.olinix.audioguest.ui.countdown.CountdownScreen
 import com.olinix.audioguest.ui.error.ErrorScreen
 import com.olinix.audioguest.ui.gallery.GalleryScreen
 import com.olinix.audioguest.ui.handset.ConnectHandsetOverlay
+import com.olinix.audioguest.ui.host.HostCorner
+import com.olinix.audioguest.ui.host.HostLoginScreen
+import com.olinix.audioguest.ui.host.HostPanelScreen
 import com.olinix.audioguest.ui.idle.IdleScreen
 import com.olinix.audioguest.ui.menu.MenuScreen
 import com.olinix.audioguest.ui.player.PlayerScreen
@@ -43,6 +47,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Root of the kiosk: picks the screen for the current session state.
  *
  * @param cameraPreview live front-camera image, shown behind the video countdown and recording.
+ * @param onExitApp "Salir de la app" in the host panel: unpins and closes the app.
  */
 @Composable
 fun AudioGuestApp(
@@ -50,10 +55,12 @@ fun AudioGuestApp(
     cameraPreview: StateFlow<SurfaceRequest?>,
     event: EventInfo,
     config: SessionConfig,
+    onExitApp: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recordings by viewModel.recordings.collectAsStateWithLifecycle()
-    val handsetMissing by viewModel.handsetMissing.collectAsStateWithLifecycle()
+    // The host does not need the handset, so the warning stays off the host screens.
+    val handsetMissing = viewModel.handsetMissing.collectAsStateWithLifecycle().value && !state.isHostScreen()
 
     // In a kiosk the system back gesture only steps back inside the guest flow.
     BackHandler { viewModel.back() }
@@ -128,14 +135,27 @@ fun AudioGuestApp(
                     onPlayingChange = viewModel::onPlaybackChanged,
                 )
                 is SessionState.Error -> ErrorScreen(reason = current.reason, onBack = viewModel::back)
+                is SessionState.HostLogin -> HostLoginScreen(
+                    state = current,
+                    pinLength = config.hostPin.length,
+                    onDigit = viewModel::typePinDigit,
+                    onErase = viewModel::erasePinDigit,
+                    onBack = viewModel::back,
+                )
+                SessionState.HostPanel -> HostPanelScreen(event = event, onClose = viewModel::back, onExitApp = onExitApp)
             }
         }
 
         AnimatedVisibility(visible = handsetMissing, enter = fadeIn(tween(250)), exit = fadeOut(tween(250))) {
             ConnectHandsetOverlay()
         }
+
+        // Above the handset warning, so the host can get in even with the handset unplugged.
+        if (state == SessionState.Idle) HostCorner(onHold = viewModel::openHostLogin, modifier = Modifier.align(Alignment.TopEnd))
     }
 }
+
+private fun SessionState.isHostScreen(): Boolean = this is SessionState.HostLogin || this == SessionState.HostPanel
 
 private fun SessionState.showsCamera(): Boolean = when (this) {
     is SessionState.Countdown -> mode == RecordingMode.VIDEO

@@ -55,6 +55,8 @@ fun PillButton(
         PillStyle.QUIET -> Ivory.copy(alpha = 0.04f) to MaterialTheme.colorScheme.onSurfaceVariant
     }
     val color = contentColor ?: foreground
+    // Small 72 dp pills, like those in the host panel, use smaller text and icons.
+    val small = height < 96.dp
     val border = if (style == PillStyle.OUTLINE) Modifier.border(2.dp, borderColor, shape) else Modifier
 
     Row(
@@ -70,12 +72,16 @@ fun PillButton(
     ) {
         leading?.invoke(this)
         if (icon != null) {
-            Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(32.dp))
+            Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(if (small) 24.dp else 32.dp))
         }
         Text(
             text = text,
             color = color,
-            fontSize = if (height >= 120.dp) 34.sp else 28.sp,
+            fontSize = when {
+                height >= 120.dp -> 34.sp
+                small -> 22.sp
+                else -> 28.sp
+            },
             fontWeight = if (style == PillStyle.QUIET) FontWeight.Medium else FontWeight.Bold,
             style = MaterialTheme.typography.titleLarge,
         )

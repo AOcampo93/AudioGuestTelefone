@@ -14,6 +14,8 @@ data class SessionConfig(
      * Turned off only on the emulator, which cannot plug in a USB handset.
      */
     val requireHandset: Boolean = true,
+    /** Opens the host panel. Fixed for now; the host settings will let the host change it. */
+    val hostPin: String = "2026",
 ) {
     fun maxSecondsFor(mode: RecordingMode): Int = when (mode) {
         RecordingMode.AUDIO -> maxAudioSeconds

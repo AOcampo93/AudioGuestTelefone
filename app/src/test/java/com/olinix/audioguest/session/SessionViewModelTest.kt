@@ -310,6 +310,49 @@ class SessionViewModelTest {
     private fun savedFiles(): List<File> =
         recordings.listFiles()?.filterNot { it.name.startsWith("pending-") }.orEmpty()
 
+    @Test
+    fun theRightPinOpensTheHostPanel() = runTest(dispatcher) {
+        viewModel.openHostLogin()
+        listOf(2, 0, 2).forEach(viewModel::typePinDigit)
+        assertEquals(SessionState.HostLogin(digits = 3), viewModel.state.value)
+
+        viewModel.typePinDigit(6)
+        assertEquals(SessionState.HostPanel, viewModel.state.value)
+        assertEquals(LightScene.MENU, lights.shown.last())
+    }
+
+    @Test
+    fun aWrongPinClearsThePad() = runTest(dispatcher) {
+        viewModel.openHostLogin()
+        listOf(1, 2, 3, 4).forEach(viewModel::typePinDigit)
+        assertEquals(SessionState.HostLogin(wrongPin = true), viewModel.state.value)
+
+        // The next try starts from an empty pad, and Borrar takes back the last digit.
+        listOf(2, 0, 9).forEach(viewModel::typePinDigit)
+        viewModel.erasePinDigit()
+        listOf(2, 6).forEach(viewModel::typePinDigit)
+        assertEquals(SessionState.HostPanel, viewModel.state.value)
+    }
+
+    @Test
+    fun theHostLoginOnlyOpensFromTheInvitation() = runTest(dispatcher) {
+        viewModel.start()
+        viewModel.openHostLogin()
+        assertEquals(SessionState.Menu, viewModel.state.value)
+    }
+
+    @Test
+    fun aForgottenHostPanelClosesItself() = runTest(dispatcher) {
+        viewModel.openHostLogin()
+        listOf(2, 0, 2, 6).forEach(viewModel::typePinDigit)
+        waitSeconds(30)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+
+        viewModel.openHostLogin()
+        viewModel.back()
+        assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
     private fun TestScope.startRecording(mode: RecordingMode) {
         viewModel.start()
         viewModel.chooseMode(mode)

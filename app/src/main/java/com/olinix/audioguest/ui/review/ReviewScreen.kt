@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,6 +39,7 @@ import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionState
 import com.olinix.audioguest.ui.components.AccentCircle
 import com.olinix.audioguest.ui.components.CameraBackdrop
+import com.olinix.audioguest.ui.components.ConfirmDialog
 import com.olinix.audioguest.ui.components.PillButton
 import com.olinix.audioguest.ui.components.PillStyle
 import com.olinix.audioguest.ui.components.ProgressBar
@@ -48,10 +47,7 @@ import com.olinix.audioguest.ui.components.Waveform
 import com.olinix.audioguest.ui.components.screenBackground
 import com.olinix.audioguest.ui.theme.AudioGuestTheme
 import com.olinix.audioguest.ui.theme.Charcoal
-import com.olinix.audioguest.ui.theme.DialogScrim
 import com.olinix.audioguest.ui.theme.Ivory
-import com.olinix.audioguest.ui.theme.RecordRed
-import com.olinix.audioguest.ui.theme.RecordRedLight
 import com.olinix.audioguest.ui.theme.Sand
 import com.olinix.audioguest.ui.theme.SurfaceRaised
 import com.olinix.audioguest.ui.theme.Taupe
@@ -125,9 +121,14 @@ fun ReviewScreen(
         }
 
         if (confirmingDiscard) {
-            DiscardDialog(
+            ConfirmDialog(
+                icon = R.drawable.ic_trash,
+                title = stringResource(R.string.discard_title),
+                body = stringResource(R.string.discard_body),
+                keepText = stringResource(R.string.discard_keep),
+                confirmText = stringResource(R.string.discard_confirm),
                 onKeep = { confirmingDiscard = false },
-                onDiscard = onDiscard,
+                onConfirm = onDiscard,
             )
         }
     }
@@ -218,67 +219,6 @@ private fun PlaybackTime(positionSeconds: Int, durationSeconds: Int) {
         Text(" / ${formatDuration(durationSeconds)}", fontSize = 34.sp, fontWeight = FontWeight.Medium, color = Sand, style = MaterialTheme.typography.titleLarge)
     }
 }
-
-/** "¿Descartar este mensaje?" The safe choice is the big gold button. */
-@Composable
-private fun DiscardDialog(onKeep: () -> Unit, onDiscard: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DialogScrim)
-            // Swallow taps on the scrim so nothing underneath reacts.
-            .clickable(interactionSource = null, indication = null, onClick = {})
-            .padding(horizontal = 56.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(36.dp))
-                .background(SurfaceRaised)
-                .border(1.5.dp, Ivory.copy(alpha = 0.14f), RoundedCornerShape(36.dp))
-                .padding(start = 48.dp, end = 48.dp, top = 56.dp, bottom = 48.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                Modifier.size(104.dp).background(RecordRed.copy(alpha = 0.14f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(painterResource(R.drawable.ic_trash), contentDescription = null, tint = RecordRedLight, modifier = Modifier.size(46.dp))
-            }
-            Text(
-                text = stringResource(R.string.discard_title),
-                style = MaterialTheme.typography.displaySmall,
-                fontSize = 52.sp,
-                textAlign = TextAlign.Center,
-                color = Ivory,
-                modifier = Modifier.padding(top = 28.dp),
-            )
-            Text(
-                text = stringResource(R.string.discard_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Sand,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 14.dp),
-            )
-            PillButton(
-                text = stringResource(R.string.discard_keep),
-                onClick = onKeep,
-                modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
-            )
-            PillButton(
-                text = stringResource(R.string.discard_confirm),
-                onClick = onDiscard,
-                style = PillStyle.OUTLINE,
-                height = 96.dp,
-                contentColor = RecordRedLight,
-                borderColor = RecordRedLight.copy(alpha = 0.6f),
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            )
-        }
-    }
-}
-
 
 @Preview(widthDp = 800, heightDp = 1280)
 @Composable

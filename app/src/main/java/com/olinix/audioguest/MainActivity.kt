@@ -1,6 +1,7 @@
 package com.olinix.audioguest
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
@@ -35,6 +36,12 @@ class MainActivity : ComponentActivity() {
         // For testing without a handset, as on the emulator: `adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset false`
         SessionConfig(requireHandset = intent.getBooleanExtra(EXTRA_REQUIRE_HANDSET, true))
     }
+
+    /** Pins the app so guests cannot leave it. Turned off only while developing: `--ez kiosk false`. */
+    private val kiosk by lazy { intent.getBooleanExtra(EXTRA_KIOSK, true) }
+
+    /** Set once the host chose "Salir de la app", so the app does not pin itself again on the way out. */
+    private var leaving = false
 
     private val session: SessionViewModel by viewModels {
         viewModelFactory {
@@ -72,9 +79,20 @@ class MainActivity : ComponentActivity() {
         val camera = (application as AudioGuestApplication).camera
         setContent {
             AudioGuestTheme {
-                AudioGuestApp(viewModel = session, cameraPreview = camera.preview, event = EventInfo.Sample, config = config)
+                AudioGuestApp(
+                    viewModel = session,
+                    cameraPreview = camera.preview,
+                    event = EventInfo.Sample,
+                    config = config,
+                    onExitApp = ::exitKiosk,
+                )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        keepPinned()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -96,6 +114,28 @@ class MainActivity : ComponentActivity() {
         if (missing.isNotEmpty()) requestPermissions.launch(missing.toTypedArray())
     }
 
+    /**
+     * Screen pinning: no home, recents or notifications until the host leaves from the panel.
+     * Android asks the host to confirm each time it pins. If someone unpins with the system
+     * gesture, the tablet locks (as long as it has a screen lock) and the app asks again on return.
+     */
+    private fun keepPinned() {
+        if (!kiosk || leaving || isPinned()) return
+        Log.i(KIOSK_TAG, "Asking to pin the app")
+        startLockTask()
+    }
+
+    private fun isPinned(): Boolean =
+        getSystemService(ActivityManager::class.java).lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+
+    /** "Salir de la app" in the host panel. */
+    private fun exitKiosk() {
+        leaving = true
+        if (isPinned()) stopLockTask()
+        Log.i(KIOSK_TAG, "The host closed the app")
+        finishAndRemoveTask()
+    }
+
     /** Full screen with no status or navigation bar, like the kiosk. */
     private fun hideSystemBars() {
         WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -106,7 +146,9 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val TAG = "Handset"
+        const val KIOSK_TAG = "Kiosk"
         const val EXTRA_REQUIRE_HANDSET = "require_handset"
+        const val EXTRA_KIOSK = "kiosk"
         val REQUIRED_PERMISSIONS = listOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA)
 
         /** Keys a handset's answer button may send: the classic headset hook, or play/pause. */
