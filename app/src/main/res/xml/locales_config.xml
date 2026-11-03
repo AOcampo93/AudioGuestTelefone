@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Languages of the guest screens, chosen by the host in the panel. -->
+<!-- Languages of the app, chosen by the host in the panel. -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
-    <locale android:name="pt" />
+    <locale android:name="pt-PT" />
     <locale android:name="es" />
     <locale android:name="en" />
 </locale-config>

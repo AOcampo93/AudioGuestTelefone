@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -127,7 +128,12 @@ fun EventTitle(event: EventInfo, title: String, modifier: Modifier = Modifier, t
             lineHeight = 36.sp,
             color = MaterialTheme.colorScheme.primary,
         )
-        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp)) {
+        // The count sits after the title, or on its own line when a longer translation leaves no room.
+        FlowRow(
+            modifier = Modifier.padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            itemVerticalAlignment = Alignment.Bottom,
+        ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.displayMedium,
@@ -140,7 +146,9 @@ fun EventTitle(event: EventInfo, title: String, modifier: Modifier = Modifier, t
                     text = trailing,
                     style = MaterialTheme.typography.bodyMedium,
                     color = Sand,
-                    modifier = Modifier.padding(start = 18.dp, bottom = 14.dp),
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(bottom = 14.dp),
                 )
             }
         }

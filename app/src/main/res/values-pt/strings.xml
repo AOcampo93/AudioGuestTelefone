@@ -292,8 +292,8 @@
         <item quantity="other">%1$d mensagens prontas</item>
     </plurals>
     <plurals name="host_export_new">
-        <item quantity="one">%1$d novo</item>
-        <item quantity="many">%1$d novos</item>
-        <item quantity="other">%1$d novos</item>
+        <item quantity="one">%1$d nova</item>
+        <item quantity="many">%1$d novas</item>
+        <item quantity="other">%1$d novas</item>
     </plurals>
 </resources>

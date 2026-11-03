@@ -29,7 +29,7 @@ class TimeFormatTest {
     @Test
     fun thePanelListsTheDayInTheScreenLanguage() {
         assertEquals("14 jun · 21:42", formatDayAndTime(1_813_009_320_000, Locale.forLanguageTag("es"), ZoneId.of("UTC")))
-        assertEquals("14 jun · 21:42", formatDayAndTime(1_813_009_320_000, Locale.forLanguageTag("pt"), ZoneId.of("UTC")))
+        assertEquals("14 jun · 21:42", formatDayAndTime(1_813_009_320_000, Locale.forLanguageTag("pt-PT"), ZoneId.of("UTC")))
         assertEquals("14 Jun · 21:42", formatDayAndTime(1_813_009_320_000, Locale.ENGLISH, ZoneId.of("UTC")))
     }
 }

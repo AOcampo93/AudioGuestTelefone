@@ -22,9 +22,10 @@ enum class Accent(val argb: Long) {
     PINK(0xFFE3A0B4),
 }
 
-/** Language of the guest screens. The host panel always stays in Spanish. */
+/** Language of the whole app, guest screens and host panel alike. */
 enum class GuestLanguage(val tag: String) {
-    PORTUGUESE("pt"),
+    /** Portugal's Portuguese: the pt texts with its own plural rules, where 0 counts as plural. */
+    PORTUGUESE("pt-PT"),
     SPANISH("es"),
     ENGLISH("en"),
 }
