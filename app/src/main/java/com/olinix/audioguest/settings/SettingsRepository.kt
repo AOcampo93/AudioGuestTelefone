@@ -48,7 +48,9 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
             prefs[DATE] = settings.date.toString()
             prefs[ACCENT] = settings.accent.name
             prefs[WELCOME_VIDEO] = settings.welcomeVideo
+            prefs[WELCOME_SOUND] = settings.welcomeSound.name
             prefs[LANGUAGE] = settings.language.name
+            prefs[ALLOWED] = settings.allowed.name
             prefs[SHOW_MESSAGES] = settings.showMessages
             prefs[SHOW_MODE] = settings.showMode
             prefs[SHOW_AFTER] = settings.showAfterSeconds
@@ -73,7 +75,9 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
             date = this[DATE]?.let(LocalDate::parse) ?: defaults.date,
             accent = enumOr(this[ACCENT], defaults.accent),
             welcomeVideo = this[WELCOME_VIDEO] ?: defaults.welcomeVideo,
+            welcomeSound = enumOr(this[WELCOME_SOUND], defaults.welcomeSound),
             language = enumOr(this[LANGUAGE], defaults.language),
+            allowed = enumOr(this[ALLOWED], defaults.allowed),
             showMessages = this[SHOW_MESSAGES] ?: defaults.showMessages,
             showMode = this[SHOW_MODE] ?: defaults.showMode,
             showAfterSeconds = this[SHOW_AFTER] ?: defaults.showAfterSeconds,
@@ -97,7 +101,9 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
         val DATE = stringPreferencesKey("date")
         val ACCENT = stringPreferencesKey("accent")
         val WELCOME_VIDEO = booleanPreferencesKey("welcome_video")
+        val WELCOME_SOUND = stringPreferencesKey("welcome_sound")
         val LANGUAGE = stringPreferencesKey("language")
+        val ALLOWED = stringPreferencesKey("allowed")
         val SHOW_MESSAGES = booleanPreferencesKey("show_messages")
         val SHOW_MODE = booleanPreferencesKey("show_mode")
         val SHOW_AFTER = intPreferencesKey("show_after")

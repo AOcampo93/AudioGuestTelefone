@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
 import com.olinix.audioguest.audio.Playback
 import com.olinix.audioguest.audio.VideoFrame
+import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.session.EventInfo
@@ -73,7 +74,7 @@ fun ShowScreen(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val isVideo = recording.mode == RecordingMode.VIDEO
-    val playback = rememberPlayback(file, autoPlay = true, onPlayingChange = onPlayingChange, throughSpeaker = true)
+    val playback = rememberPlayback(file, autoPlay = true, onPlayingChange = onPlayingChange, sound = SoundOutput.SPEAKER)
 
     Box(
         modifier

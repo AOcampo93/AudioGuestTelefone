@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.audio.VideoFrame
 import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.session.EventInfo
@@ -42,8 +43,8 @@ import com.olinix.audioguest.ui.theme.IvorySoft
 import com.olinix.audioguest.ui.theme.Surface
 
 /**
- * Screen 13 · The host's welcome video, heard through the handset. "Saltar", a tap anywhere
- * or the end of the video moves on to the menu.
+ * Screen 13 · The host's welcome video, heard through the handset or the tablet's speaker as the
+ * host chose. "Saltar", a tap anywhere or the end of the video moves on to the menu.
  */
 @Composable
 fun WelcomeScreen(
@@ -52,9 +53,10 @@ fun WelcomeScreen(
     onFinish: () -> Unit,
     onPlayingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    sound: SoundOutput = SoundOutput.HANDSET,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val playback = rememberPlayback(welcome.file, autoPlay = true, onPlayingChange = onPlayingChange)
+    val playback = rememberPlayback(welcome.file, autoPlay = true, onPlayingChange = onPlayingChange, sound = sound)
     LaunchedEffect(playback.ended) { if (playback.ended) onFinish() }
 
     Box(
@@ -68,7 +70,11 @@ fun WelcomeScreen(
 
         Column(Modifier.padding(56.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             OverlayChip(R.drawable.ic_video, stringResource(R.string.welcome_chip), iconSize = 28.dp, bold = true)
-            OverlayChip(R.drawable.ic_phone, stringResource(R.string.player_listen_handset), outlined = true)
+            if (sound == SoundOutput.SPEAKER) {
+                OverlayChip(R.drawable.ic_speaker, stringResource(R.string.player_listen_speaker), outlined = true)
+            } else {
+                OverlayChip(R.drawable.ic_phone, stringResource(R.string.player_listen_handset), outlined = true)
+            }
         }
 
         Column(

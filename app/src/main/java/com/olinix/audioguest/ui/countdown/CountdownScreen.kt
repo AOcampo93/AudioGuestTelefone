@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionState
 import com.olinix.audioguest.ui.components.CameraBackdrop
@@ -63,7 +64,7 @@ private val RingSize = 400.dp
  * For video the screen is see-through: the camera preview runs underneath, darkened.
  */
 @Composable
-fun CountdownScreen(state: SessionState.Countdown, modifier: Modifier = Modifier) {
+fun CountdownScreen(state: SessionState.Countdown, modifier: Modifier = Modifier, microphone: Microphone = Microphone.HANDSET) {
     val isVideo = state.mode == RecordingMode.VIDEO
 
     Box(modifier.fillMaxSize().then(if (isVideo) Modifier else Modifier.screenBackground())) {
@@ -92,6 +93,7 @@ fun CountdownScreen(state: SessionState.Countdown, modifier: Modifier = Modifier
                         state.number > 0 && isVideo -> R.string.countdown_look_at_camera
                         state.number > 0 -> R.string.countdown_get_ready
                         isVideo -> R.string.countdown_now_video
+                        microphone == Microphone.TABLET -> R.string.speak_into_tablet
                         else -> R.string.speak_into_handset
                     }
                 ),

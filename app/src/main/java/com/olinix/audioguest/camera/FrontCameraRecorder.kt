@@ -27,6 +27,7 @@ import androidx.camera.video.VideoRecordEvent
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.olinix.audioguest.audio.MessageRecorder
+import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.loudness
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +37,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 /**
- * Records video messages with the front camera: 720p portrait video with the sound from the handset.
+ * Records video messages with the front camera: 720p portrait video with the sound from the
+ * handset or the tablet's own microphone.
  *
  * The camera is only open between [prepare] and [release], so it (and Android's camera
  * indicator) stays off while nobody is recording a video.
@@ -54,17 +56,11 @@ class FrontCameraRecorder(private val context: Context) : MessageRecorder {
         .build()
         .apply { setSurfaceProvider { request -> _preview.value = request } }
 
-    private val videoCapture = VideoCapture.Builder(
-        Recorder.Builder()
-            .setQualitySelector(QualitySelector.from(Quality.HD, FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)))
-            // About 30 MB per minute: a whole event fits easily on the tablet.
-            .setTargetVideoEncodingBitRate(4_000_000)
-            .recordFromHandset()
-            .build()
-    )
-        // Mirrored like the preview, so in the review guests see themselves as they did while recording.
-        .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
-        .build()
+    /** One video use case per microphone, since CameraX fixes where the sound comes from when it is built. */
+    private val videoCaptures = mutableMapOf<Microphone, VideoCapture<Recorder>>()
+
+    /** The use case bound between [prepare] and [release]. */
+    private var videoCapture: VideoCapture<Recorder>? = null
 
     private var cameraProvider: ProcessCameraProvider? = null
     private var recording: Recording? = null
@@ -74,8 +70,10 @@ class FrontCameraRecorder(private val context: Context) : MessageRecorder {
     private var lastSampleAt = 0L
     private var microphoneLogged = false
 
-    override suspend fun prepare(): Boolean {
-        if (cameraProvider != null) return true
+    override suspend fun prepare(microphone: Microphone): Boolean {
+        val capture = videoCaptures.getOrPut(microphone) { videoCaptureFor(microphone) }
+        if (cameraProvider != null && videoCapture == capture) return true
+        release()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "Camera permission not granted")
             return false
@@ -84,8 +82,9 @@ class FrontCameraRecorder(private val context: Context) : MessageRecorder {
         return try {
             // Bound to the whole app rather than one screen, so the camera stays open from the
             // countdown into the recording, and Android still closes it if the app goes to the background.
-            provider.bindToLifecycle(ProcessLifecycleOwner.get(), CameraSelector.DEFAULT_FRONT_CAMERA, previewUseCase, videoCapture)
+            provider.bindToLifecycle(ProcessLifecycleOwner.get(), CameraSelector.DEFAULT_FRONT_CAMERA, previewUseCase, capture)
             cameraProvider = provider
+            videoCapture = capture
             true
         } catch (e: IllegalArgumentException) {
             Log.e(TAG, "No front camera available", e)
@@ -94,7 +93,7 @@ class FrontCameraRecorder(private val context: Context) : MessageRecorder {
     }
 
     override suspend fun start(output: File): Boolean {
-        if (cameraProvider == null) return false
+        val capture = videoCapture ?: return false
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "Microphone permission not granted")
             return false
@@ -104,7 +103,7 @@ class FrontCameraRecorder(private val context: Context) : MessageRecorder {
         finished = done
         amplitude = 0.0
         microphoneLogged = false
-        recording = videoCapture.output
+        recording = capture.output
             .prepareRecording(context, FileOutputOptions.Builder(output).build())
             .withAudioEnabled()
             .start(ContextCompat.getMainExecutor(context)) { event ->
@@ -144,7 +143,8 @@ class FrontCameraRecorder(private val context: Context) : MessageRecorder {
     }
 
     override fun release() {
-        cameraProvider?.unbind(previewUseCase, videoCapture)
+        videoCapture?.let { cameraProvider?.unbind(previewUseCase, it) }
+        videoCapture = null
         cameraProvider = null
         _preview.value = null
     }
@@ -161,8 +161,20 @@ class FrontCameraRecorder(private val context: Context) : MessageRecorder {
         return level
     }
 
+    private fun videoCaptureFor(microphone: Microphone): VideoCapture<Recorder> = VideoCapture.Builder(
+        Recorder.Builder()
+            .setQualitySelector(QualitySelector.from(Quality.HD, FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)))
+            // About 30 MB per minute: a whole event fits easily on the tablet.
+            .setTargetVideoEncodingBitRate(4_000_000)
+            .recordFrom(microphone)
+            .build()
+    )
+        // Mirrored like the preview, so in the review guests see themselves as they did while recording.
+        .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
+        .build()
+
     /**
-     * Says in the log which microphone the video is using, to confirm it is the handset.
+     * Says in the log which microphone the video is using, to confirm it is the one the guest chose.
      * Returns false while Android has not picked the device yet.
      */
     private fun logMicrophone(): Boolean {
@@ -182,10 +194,15 @@ class FrontCameraRecorder(private val context: Context) : MessageRecorder {
 }
 
 /**
- * CameraX records sound from the CAMCORDER source, which Android routes to the tablet's own
- * microphone even with a USB handset plugged in. The MIC source follows the handset, as voice
- * messages do. setAudioSource is internal to CameraX (hence the suppressed lint check), so this
- * needs checking whenever CameraX is upgraded.
+ * CameraX cannot be pointed at one microphone, but Android routes its sources differently:
+ * CAMCORDER (CameraX's default) always uses the tablet's own microphone, while MIC follows the
+ * USB handset whenever it is plugged in, as voice messages do. setAudioSource is internal to
+ * CameraX (hence the suppressed lint check), so this needs checking whenever CameraX is upgraded.
  */
 @SuppressLint("RestrictedApi")
-private fun Recorder.Builder.recordFromHandset(): Recorder.Builder = setAudioSource(AudioSpec.SOURCE_MIC)
+private fun Recorder.Builder.recordFrom(microphone: Microphone): Recorder.Builder = setAudioSource(
+    when (microphone) {
+        Microphone.HANDSET -> AudioSpec.SOURCE_MIC
+        Microphone.TABLET -> AudioSpec.SOURCE_CAMCORDER
+    }
+)

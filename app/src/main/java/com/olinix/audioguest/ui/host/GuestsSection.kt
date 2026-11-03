@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.settings.AllowedMessages
 import com.olinix.audioguest.settings.GuestLanguage
 import com.olinix.audioguest.settings.HostSettings
 import com.olinix.audioguest.ui.theme.AmberLight
@@ -45,6 +46,20 @@ fun GuestsSection(
         Column {
             PanelLabel(stringResource(R.string.host_language))
             LanguagePicker(settings.language, onPick = { language -> onChange { it.copy(language = language) } }, Modifier.padding(top = 12.dp))
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            PanelLabel(stringResource(R.string.host_allowed))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                for (allowed in AllowedMessages.entries) {
+                    PanelChip(
+                        text = allowedLabel(allowed),
+                        selected = allowed == settings.allowed,
+                        onClick = { onChange { it.copy(allowed = allowed) } },
+                    )
+                }
+            }
+            Text(stringResource(R.string.host_allowed_body), fontSize = 20.sp, lineHeight = 28.sp, color = Sand, style = MaterialTheme.typography.bodyMedium)
         }
 
         PanelCard {
@@ -144,15 +159,6 @@ private fun LanguagePicker(current: GuestLanguage, onPick: (GuestLanguage) -> Un
     }
 }
 
-/** A thin line, then the extra row of a card, such as the show mode delay. */
-@Composable
-private fun CardFooter(content: @Composable () -> Unit) {
-    Column(Modifier.padding(top = 18.dp)) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Ivory.copy(alpha = 0.1f)))
-        Box(Modifier.padding(top = 18.dp)) { content() }
-    }
-}
-
 /** Each language is named in itself, so a guest who reads only that one still finds it. */
 @Composable
 private fun languageName(language: GuestLanguage): String = stringResource(
@@ -160,6 +166,15 @@ private fun languageName(language: GuestLanguage): String = stringResource(
         GuestLanguage.PORTUGUESE -> R.string.host_language_pt
         GuestLanguage.SPANISH -> R.string.host_language_es
         GuestLanguage.ENGLISH -> R.string.host_language_en
+    }
+)
+
+@Composable
+private fun allowedLabel(allowed: AllowedMessages): String = stringResource(
+    when (allowed) {
+        AllowedMessages.BOTH -> R.string.host_allowed_both
+        AllowedMessages.VOICE_ONLY -> R.string.host_allowed_voice
+        AllowedMessages.VIDEO_ONLY -> R.string.host_allowed_video
     }
 )
 

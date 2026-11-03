@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -42,6 +43,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.olinix.audioguest.R
+import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.ui.theme.FieldBackground
 import com.olinix.audioguest.ui.theme.Ivory
 import com.olinix.audioguest.ui.theme.Muted
@@ -175,6 +178,31 @@ fun PanelSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: 
                 .size(42.dp)
                 .background(if (enabled) Ivory else Ivory.copy(alpha = 0.25f), CircleShape)
         )
+    }
+}
+
+/** "Auricular · Altavoz de la tablet": where one of the host's videos is heard. */
+@Composable
+fun SoundChips(selected: SoundOutput, onPick: (SoundOutput) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        for (sound in SoundOutput.entries) {
+            PanelChip(
+                text = stringResource(if (sound == SoundOutput.HANDSET) R.string.host_sound_handset else R.string.host_sound_speaker),
+                selected = sound == selected,
+                onClick = { onPick(sound) },
+                height = 56,
+                fontSize = 20,
+            )
+        }
+    }
+}
+
+/** A thin line, then the extra row of a [PanelCard], such as the show mode delay. */
+@Composable
+fun CardFooter(content: @Composable () -> Unit) {
+    Column(Modifier.padding(top = 18.dp)) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Ivory.copy(alpha = 0.1f)))
+        Box(Modifier.padding(top = 18.dp)) { content() }
     }
 }
 

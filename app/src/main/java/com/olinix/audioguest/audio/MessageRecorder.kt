@@ -6,10 +6,10 @@ import java.io.File
 interface MessageRecorder {
 
     /**
-     * Gets ready ahead of [start], during the countdown. The camera uses it to open
-     * and show its preview. Returns false if the device cannot be used.
+     * Gets ready ahead of [start], during the countdown, to record from [microphone].
+     * The camera uses it to open and show its preview. Returns false if the device cannot be used.
      */
-    suspend fun prepare(): Boolean = true
+    suspend fun prepare(microphone: Microphone): Boolean = true
 
     /** Starts recording into [output]. Returns false if recording could not start. */
     suspend fun start(output: File): Boolean

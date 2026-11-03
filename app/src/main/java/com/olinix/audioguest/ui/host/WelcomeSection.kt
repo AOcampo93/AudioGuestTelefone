@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.audio.VideoFrame
 import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.audio.rememberVideoFrame
@@ -90,6 +91,12 @@ fun WelcomeSection(
         PanelCard {
             PanelCardRow(title = stringResource(R.string.host_welcome_show), body = stringResource(R.string.host_welcome_show_body)) {
                 PanelSwitch(checked = settings.welcomeVideo, onCheckedChange = { on -> onChange { it.copy(welcomeVideo = on) } })
+            }
+            CardFooter {
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.host_sound), fontSize = 20.sp, color = Taupe, style = MaterialTheme.typography.bodyMedium)
+                    SoundChips(settings.welcomeSound, onPick = { sound -> onChange { it.copy(welcomeSound = sound) } })
+                }
             }
         }
 
@@ -192,7 +199,8 @@ private fun WelcomeClip(welcome: WelcomeVideo, onPlayingChange: (Boolean) -> Uni
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         var playing by remember(welcome) { mutableStateOf(false) }
         if (playing) {
-            val playback = rememberPlayback(welcome.file, autoPlay = true, onPlayingChange = onPlayingChange)
+            // The host is standing at the tablet, so the preview plays out loud.
+            val playback = rememberPlayback(welcome.file, autoPlay = true, onPlayingChange = onPlayingChange, sound = SoundOutput.SPEAKER)
             LaunchedEffect(playback.ended) { if (playback.ended) playing = false }
             VideoFrame(playback, Modifier.fillMaxSize().clickable { playback.toggle() }, contentScale = ContentScale.Crop)
         } else {

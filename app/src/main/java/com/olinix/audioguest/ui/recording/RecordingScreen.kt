@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionState
 import com.olinix.audioguest.ui.components.CameraBackdrop
@@ -73,11 +74,12 @@ fun RecordingScreen(
     onFinish: () -> Unit,
     modifier: Modifier = Modifier,
     level: () -> Float = { 1f },
+    microphone: Microphone = Microphone.HANDSET,
 ) {
     val lastSeconds = state.remainingSeconds <= WARNING_SECONDS
     when (state.mode) {
-        RecordingMode.AUDIO -> VoiceRecording(state, lastSeconds, onFinish, level, modifier)
-        RecordingMode.VIDEO -> VideoRecording(state, lastSeconds, onFinish, level, modifier)
+        RecordingMode.AUDIO -> VoiceRecording(state, lastSeconds, onFinish, level, microphone, modifier)
+        RecordingMode.VIDEO -> VideoRecording(state, lastSeconds, onFinish, level, microphone, modifier)
     }
 }
 
@@ -87,6 +89,7 @@ private fun VoiceRecording(
     lastSeconds: Boolean,
     onFinish: () -> Unit,
     level: () -> Float,
+    microphone: Microphone,
     modifier: Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -135,10 +138,21 @@ private fun VoiceRecording(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val tablet = microphone == Microphone.TABLET
             Box(Modifier.size(56.dp).border(1.5.dp, accent, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(painterResource(R.drawable.ic_phone), contentDescription = null, tint = accent, modifier = Modifier.size(26.dp))
+                Icon(
+                    painterResource(if (tablet) R.drawable.ic_tablet else R.drawable.ic_phone),
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(26.dp),
+                )
             }
-            Text(stringResource(R.string.speak_into_handset), fontSize = 28.sp, color = IvorySoft, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = stringResource(if (tablet) R.string.speak_into_tablet else R.string.speak_into_handset),
+                fontSize = 28.sp,
+                color = IvorySoft,
+                style = MaterialTheme.typography.bodyLarge,
+            )
         }
 
         FinishButton(onFinish, Modifier.padding(top = 32.dp))
@@ -185,6 +199,7 @@ private fun VideoRecording(
     lastSeconds: Boolean,
     onFinish: () -> Unit,
     level: () -> Float,
+    microphone: Microphone,
     modifier: Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -205,7 +220,7 @@ private fun VideoRecording(
                 RecordingBadge(onCamera = true)
                 VideoClock(state, lastSeconds)
             }
-            HandsetMeter(level)
+            MicrophoneMeter(level, microphone)
         }
 
         Column(
@@ -262,9 +277,9 @@ private fun VideoClock(state: SessionState.Capturing, lastSeconds: Boolean) {
     }
 }
 
-/** Handset icon plus five tiny bars: proof that the sound comes from the handset. */
+/** Handset or tablet icon plus five tiny bars: proof that the sound comes from the chosen microphone. */
 @Composable
-private fun HandsetMeter(level: () -> Float) {
+private fun MicrophoneMeter(level: () -> Float, microphone: Microphone) {
     val accent = MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier
@@ -275,7 +290,12 @@ private fun HandsetMeter(level: () -> Float) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(R.drawable.ic_phone), contentDescription = null, tint = accent, modifier = Modifier.size(26.dp))
+        Icon(
+            painterResource(if (microphone == Microphone.TABLET) R.drawable.ic_tablet else R.drawable.ic_phone),
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(26.dp),
+        )
         Waveform(color = accent, animated = true, level = level, barWidth = 4.dp, gap = 4.dp, modifier = Modifier.width(36.dp).height(30.dp))
     }
 }

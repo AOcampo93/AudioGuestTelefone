@@ -12,6 +12,11 @@
     <string name="video_message">Mensaje de video</string>
     <string name="speak_into_handset">Habla por el auricular</string>
     <string name="look_here">Mira aquí</string>
+    <string name="speak_into_tablet">Habla hacia la tablet</string>
+    <string name="microphone">Micrófono</string>
+    <string name="route_handset">Auricular</string>
+    <string name="route_tablet">Tablet</string>
+    <string name="route_speaker">Altavoz</string>
 
     <!-- Menu -->
     <string name="menu_title">¿Qué quieres dejar?</string>
@@ -73,6 +78,7 @@
     <string name="player_heading" translatable="false">%1$s · %2$s</string>
     <string name="player_position">%1$d de %2$d</string>
     <string name="player_listen_handset">Escúchalo por el auricular</string>
+    <string name="player_listen_speaker">Suena por el altavoz</string>
     <string name="player_previous">Anterior</string>
     <string name="player_next">Siguiente</string>
     <string name="play">Reproducir</string>
@@ -127,7 +133,7 @@
     <string name="host_welcome_title" translatable="false">Video de bienvenida</string>
     <string name="host_welcome_body" translatable="false">Un saludo en video antes de que los invitados graben.</string>
     <string name="host_guests_title" translatable="false">Experiencia del invitado</string>
-    <string name="host_guests_body" translatable="false">Idioma, galería de mensajes y Modo Show.</string>
+    <string name="host_guests_body" translatable="false">Idioma, mensajes permitidos, galería y Modo Show.</string>
 
     <string name="host_event_type" translatable="false">Tipo de evento</string>
     <string name="host_type_wedding" translatable="false">Boda</string>
@@ -166,6 +172,9 @@
 
     <string name="host_welcome_show" translatable="false">Mostrar video de bienvenida</string>
     <string name="host_welcome_show_body" translatable="false">Opcional. Se reproduce al tocar la pantalla, antes del menú. Los invitados pueden saltarlo.</string>
+    <string name="host_sound" translatable="false">Sonido</string>
+    <string name="host_sound_handset" translatable="false">Auricular</string>
+    <string name="host_sound_speaker" translatable="false">Altavoz de la tablet</string>
     <string name="host_welcome_record" translatable="false">Grabar con la tablet</string>
     <string name="host_welcome_pick" translatable="false">Elegir un archivo</string>
     <string name="host_welcome_delete" translatable="false">Eliminar video</string>
@@ -188,6 +197,11 @@
     <string name="host_language_pt" translatable="false">Português</string>
     <string name="host_language_es" translatable="false">Español</string>
     <string name="host_language_en" translatable="false">English</string>
+    <string name="host_allowed" translatable="false">Mensajes permitidos</string>
+    <string name="host_allowed_both" translatable="false">Voz y video</string>
+    <string name="host_allowed_voice" translatable="false">Solo voz</string>
+    <string name="host_allowed_video" translatable="false">Solo video</string>
+    <string name="host_allowed_body" translatable="false">El menú, «Ver grabaciones» y el Modo Show solo muestran los permitidos. Los demás no se borran: solo dejan de verse en la tablet.</string>
     <string name="host_show_messages" translatable="false">Mostrar los mensajes a los invitados</string>
     <string name="host_show_messages_body" translatable="false">Activa «Ver grabaciones» en el menú. Si lo apagas, los mensajes se guardan pero no se ven en la tablet.</string>
     <string name="host_show_mode" translatable="false">Modo Show</string>

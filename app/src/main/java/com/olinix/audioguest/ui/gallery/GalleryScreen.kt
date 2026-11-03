@@ -68,7 +68,10 @@ import java.io.File
 /** Three rows of tiles fit on screen; a fourth peeks in to show the list scrolls. */
 private val TILE_HEIGHT = 256.dp
 
-/** Screen 10 · "Mensajes del evento": saved messages in a two-column grid, filtered by tab. */
+/**
+ * Screen 10 · "Mensajes del evento": saved messages in a two-column grid, filtered by tab.
+ * Without [showTabs], as when the host allows only one kind of message, every message is shown.
+ */
 @Composable
 fun GalleryScreen(
     event: EventInfo,
@@ -80,8 +83,9 @@ fun GalleryScreen(
     onBack: () -> Unit,
     onLeaveMessage: () -> Unit,
     modifier: Modifier = Modifier,
+    showTabs: Boolean = true,
 ) {
-    val shown = filter.pick(recordings)
+    val shown = if (showTabs) filter.pick(recordings) else recordings
 
     Column(
         modifier
@@ -96,12 +100,14 @@ fun GalleryScreen(
             trailing = pluralStringResource(R.plurals.gallery_count, recordings.size, recordings.size),
             modifier = Modifier.padding(top = 44.dp),
         )
-        FilterTabs(
-            selected = filter,
-            counts = GalleryFilter.entries.associateWith { it.pick(recordings).size },
-            onSelect = onFilter,
-            modifier = Modifier.padding(top = 28.dp),
-        )
+        if (showTabs) {
+            FilterTabs(
+                selected = filter,
+                counts = GalleryFilter.entries.associateWith { it.pick(recordings).size },
+                onSelect = onFilter,
+                modifier = Modifier.padding(top = 28.dp),
+            )
+        }
         if (shown.isEmpty()) {
             EmptyGallery(onLeaveMessage = onLeaveMessage, modifier = Modifier.weight(1f).padding(bottom = 64.dp))
         } else {

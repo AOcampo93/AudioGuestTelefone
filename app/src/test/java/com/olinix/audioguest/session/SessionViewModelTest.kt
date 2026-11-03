@@ -1,12 +1,15 @@
 package com.olinix.audioguest.session
 
 import com.olinix.audioguest.audio.MessageRecorder
+import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.RecordingFiles
+import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.data.RecordingRepository
 import com.olinix.audioguest.lights.LightController
 import com.olinix.audioguest.lights.LightScene
 import com.olinix.audioguest.settings.Accent
+import com.olinix.audioguest.settings.AllowedMessages
 import com.olinix.audioguest.settings.EventType
 import com.olinix.audioguest.settings.HostSettings
 import com.olinix.audioguest.settings.SettingsRepository
@@ -502,6 +505,93 @@ class SessionViewModelTest {
         assertTrue(video.isRecording)
     }
 
+    @Test
+    fun eachGuestPicksTheirMicrophone() = runTest(dispatcher) {
+        viewModel.start()
+        assertEquals(Microphone.HANDSET, viewModel.microphone.value)
+        viewModel.chooseMicrophone(Microphone.TABLET)
+        viewModel.chooseMode(RecordingMode.VIDEO)
+        runCurrent()
+        assertEquals(Microphone.TABLET, video.microphone)
+
+        // Once recording, the choice is locked in.
+        viewModel.chooseMicrophone(Microphone.HANDSET)
+        assertEquals(Microphone.TABLET, viewModel.microphone.value)
+
+        // The next guest starts again from the handset.
+        waitSeconds(4)
+        finish()
+        viewModel.discard()
+        viewModel.back()
+        viewModel.start()
+        assertEquals(Microphone.HANDSET, viewModel.microphone.value)
+        viewModel.chooseMode(RecordingMode.AUDIO)
+        runCurrent()
+        assertEquals(Microphone.HANDSET, voice.microphone)
+    }
+
+    @Test
+    fun theHostRecordsTheWelcomeWithTheTabletMicrophone() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.recordWelcome()
+        runCurrent()
+        assertEquals(Microphone.TABLET, video.microphone)
+    }
+
+    @Test
+    fun guestsChooseWhereTheyHearTheMessages() = runTest(dispatcher) {
+        repository.saved.value = listOf(voice(id = 1))
+        viewModel.start()
+        // Only inside the player.
+        viewModel.choosePlayerSound(SoundOutput.SPEAKER)
+        assertEquals(SoundOutput.HANDSET, viewModel.playerSound.value)
+
+        viewModel.openGallery()
+        viewModel.play(recordingId = 1)
+        viewModel.choosePlayerSound(SoundOutput.SPEAKER)
+        assertEquals(SoundOutput.SPEAKER, viewModel.playerSound.value)
+
+        viewModel.back()
+        viewModel.back()
+        viewModel.back()
+        viewModel.start()
+        assertEquals(SoundOutput.HANDSET, viewModel.playerSound.value)
+    }
+
+    @Test
+    fun onlyTheAllowedKindCanBeRecordedSeenOrShown() = runTest(dispatcher) {
+        repository.saved.value = listOf(video(id = 3), voice(id = 2), video(id = 1))
+        openHostPanel()
+        viewModel.updateSettings { it.copy(allowed = AllowedMessages.VIDEO_ONLY, showMode = true, showAfterSeconds = 30) }
+        viewModel.back()
+
+        // Show mode skips the voice message.
+        waitSeconds(30)
+        val shown = mutableSetOf<Long>()
+        repeat(6) {
+            shown += (viewModel.state.value as SessionState.Show).recordingId
+            waitSeconds(15)
+        }
+        assertEquals(setOf(1L, 3L), shown)
+
+        viewModel.start()
+        viewModel.chooseMode(RecordingMode.AUDIO)
+        assertEquals(SessionState.Menu, viewModel.state.value)
+
+        // In the player, "next" goes from one video to the other.
+        viewModel.openGallery()
+        viewModel.play(recordingId = 3)
+        viewModel.playNext()
+        assertEquals(1L, (viewModel.state.value as SessionState.Player).recordingId)
+
+        viewModel.back()
+        viewModel.back()
+        viewModel.back()
+        openHostPanel()
+        viewModel.updateSettings { it.copy(showMode = false) }
+        viewModel.back()
+    }
+
     private fun TestScope.startRecording(mode: RecordingMode) {
         viewModel.start()
         viewModel.chooseMode(mode)
@@ -563,9 +653,12 @@ class SessionViewModelTest {
             private set
         var isRecording = false
             private set
+        var microphone: Microphone? = null
+            private set
         private var output: File? = null
 
-        override suspend fun prepare(): Boolean {
+        override suspend fun prepare(microphone: Microphone): Boolean {
+            this.microphone = microphone
             isPrepared = canPrepare
             return canPrepare
         }

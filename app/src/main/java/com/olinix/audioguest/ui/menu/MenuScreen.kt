@@ -31,11 +31,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionConfig
 import com.olinix.audioguest.ui.components.AccentCircle
 import com.olinix.audioguest.ui.components.BackPill
+import com.olinix.audioguest.ui.components.MicrophoneToggle
 import com.olinix.audioguest.ui.components.screenBackground
 import com.olinix.audioguest.ui.theme.AudioGuestTheme
 import com.olinix.audioguest.ui.theme.Ivory
@@ -44,7 +46,10 @@ import com.olinix.audioguest.ui.theme.Sand
 import com.olinix.audioguest.ui.theme.SurfaceRaised
 import com.olinix.audioguest.ui.theme.Taupe
 
-/** Screen 2 · Menu: two big cards for voice and video, a quieter one for the gallery. */
+/**
+ * Screen 2 · Menu: big cards for voice and video (only the kinds the host allows), a quieter
+ * one for the gallery, and the choice of microphone at the top.
+ */
 @Composable
 fun MenuScreen(
     event: EventInfo,
@@ -55,6 +60,9 @@ fun MenuScreen(
     modifier: Modifier = Modifier,
     /** Off when the host hides the messages from guests. */
     showGallery: Boolean = true,
+    modes: Set<RecordingMode> = RecordingMode.entries.toSet(),
+    microphone: Microphone = Microphone.HANDSET,
+    onMicrophone: (Microphone) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -62,7 +70,18 @@ fun MenuScreen(
             .screenBackground()
             .padding(start = 56.dp, end = 56.dp, top = 48.dp, bottom = 64.dp),
     ) {
-        BackPill(onClick = onBack)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            BackPill(onClick = onBack)
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painterResource(R.drawable.ic_mic),
+                    contentDescription = stringResource(R.string.microphone),
+                    tint = Sand,
+                    modifier = Modifier.size(30.dp),
+                )
+                MicrophoneToggle(selected = microphone, onSelect = onMicrophone)
+            }
+        }
         EventTitle(event = event, title = stringResource(R.string.menu_title), modifier = Modifier.padding(top = 44.dp))
 
         Column(
@@ -71,22 +90,27 @@ fun MenuScreen(
                 .padding(top = 44.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
-            ModeCard(
-                icon = R.drawable.ic_mic,
-                limit = stringResource(R.string.menu_up_to_minutes, config.maxAudioSeconds / 60),
-                title = stringResource(R.string.voice_message),
-                hintIcon = R.drawable.ic_phone,
-                hint = stringResource(R.string.speak_into_handset),
-                onClick = { onChoose(RecordingMode.AUDIO) },
-            )
-            ModeCard(
-                icon = R.drawable.ic_video,
-                limit = stringResource(R.string.menu_up_to_minutes, config.maxVideoSeconds / 60),
-                title = stringResource(R.string.video_message),
-                hintIcon = R.drawable.ic_arrow_right,
-                hint = stringResource(R.string.menu_video_hint),
-                onClick = { onChoose(RecordingMode.VIDEO) },
-            )
+            if (RecordingMode.AUDIO in modes) {
+                val tablet = microphone == Microphone.TABLET
+                ModeCard(
+                    icon = R.drawable.ic_mic,
+                    limit = stringResource(R.string.menu_up_to_minutes, config.maxAudioSeconds / 60),
+                    title = stringResource(R.string.voice_message),
+                    hintIcon = if (tablet) R.drawable.ic_tablet else R.drawable.ic_phone,
+                    hint = stringResource(if (tablet) R.string.speak_into_tablet else R.string.speak_into_handset),
+                    onClick = { onChoose(RecordingMode.AUDIO) },
+                )
+            }
+            if (RecordingMode.VIDEO in modes) {
+                ModeCard(
+                    icon = R.drawable.ic_video,
+                    limit = stringResource(R.string.menu_up_to_minutes, config.maxVideoSeconds / 60),
+                    title = stringResource(R.string.video_message),
+                    hintIcon = R.drawable.ic_arrow_right,
+                    hint = stringResource(R.string.menu_video_hint),
+                    onClick = { onChoose(RecordingMode.VIDEO) },
+                )
+            }
             if (showGallery) GalleryCard(onClick = onGallery)
         }
     }

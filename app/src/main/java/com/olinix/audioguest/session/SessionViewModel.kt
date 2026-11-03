@@ -3,7 +3,9 @@ package com.olinix.audioguest.session
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.olinix.audioguest.audio.MessageRecorder
+import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.RecordingFiles
+import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.data.RecordingRepository
 import com.olinix.audioguest.lights.LightController
@@ -67,6 +69,16 @@ class SessionViewModel(
     /** True while "Conecta el auricular" must cover the screen. */
     val handsetMissing: StateFlow<Boolean> = _handsetMissing.asStateFlow()
 
+    private val _microphone = MutableStateFlow(Microphone.HANDSET)
+
+    /** The microphone this guest chose in the menu. Every new guest starts with the handset. */
+    val microphone: StateFlow<Microphone> = _microphone.asStateFlow()
+
+    private val _playerSound = MutableStateFlow(SoundOutput.HANDSET)
+
+    /** Where this guest hears the saved messages. Every new guest starts with the handset. */
+    val playerSound: StateFlow<SoundOutput> = _playerSound.asStateFlow()
+
     /** Countdown, recording clock or "¡Gracias!" timer. Only one runs at a time. */
     private var timerJob: Job? = null
     private var inactivityJob: Job? = null
@@ -111,6 +123,8 @@ class SessionViewModel(
     fun start() {
         if (!showsInvitation(_state.value)) return
         timerJob?.cancel()
+        _microphone.value = Microphone.HANDSET
+        _playerSound.value = SoundOutput.HANDSET
         // The welcome video plays first, if the host turned it on and there is one.
         val welcome = _settings.value.welcomeVideo && _welcomeVideo.value != null
         moveTo(if (welcome) SessionState.Welcome else SessionState.Menu)
@@ -143,7 +157,16 @@ class SessionViewModel(
     }
 
     fun chooseMode(mode: RecordingMode) {
-        if (_state.value == SessionState.Menu) startCountdown(mode)
+        if (_state.value == SessionState.Menu && _settings.value.allows(mode)) startCountdown(mode)
+    }
+
+    fun chooseMicrophone(microphone: Microphone) {
+        if (_state.value == SessionState.Menu) _microphone.value = microphone
+    }
+
+    /** "Auricular" or "Altavoz" in the player. The message keeps playing, now through the other one. */
+    fun choosePlayerSound(sound: SoundOutput) {
+        if (_state.value is SessionState.Player) _playerSound.value = sound
     }
 
     fun openGallery() {
@@ -322,8 +345,10 @@ class SessionViewModel(
     }
 
     private fun startCountdown(mode: RecordingMode, welcome: Boolean = false) {
+        // The host records from the tablet, standing in front of it rather than holding the handset.
+        val microphone = if (welcome) Microphone.TABLET else _microphone.value
         // The camera takes a moment to open, so it starts now and its preview shows behind the numbers.
-        val ready = viewModelScope.async { recorderFor(mode).prepare() }
+        val ready = viewModelScope.async { recorderFor(mode).prepare(microphone) }
         preparing = ready
         runTimer {
             // 3, 2, 1 and then 0, which the screen shows as "¡Ahora!".
@@ -400,7 +425,7 @@ class SessionViewModel(
     /** Moves through the messages of the current tab and wraps around at either end. */
     private fun step(offset: Int) {
         val player = _state.value as? SessionState.Player ?: return
-        val playlist = player.filter.pick(recordings.value)
+        val playlist = player.filter.pick(guestRecordings())
         val index = playlist.indexOfFirst { it.id == player.recordingId }
         if (index < 0) return
         moveTo(player.copy(recordingId = playlist[(index + offset).mod(playlist.size)].id))
@@ -436,7 +461,7 @@ class SessionViewModel(
                 moveTo(SessionState.Idle)
             }
             // Nobody has come to the booth for a while: show mode plays messages to draw guests in.
-            state == SessionState.Idle && _settings.value.showModeActive && recordings.value.isNotEmpty() -> viewModelScope.launch {
+            state == SessionState.Idle && _settings.value.showModeActive && guestRecordings().isNotEmpty() -> viewModelScope.launch {
                 delay(_settings.value.showAfterSeconds * ONE_SECOND)
                 playShow()
             }
@@ -448,9 +473,9 @@ class SessionViewModel(
     private fun playShow() {
         runTimer {
             var previous: Long? = null
-            while (_settings.value.showModeActive && recordings.value.isNotEmpty()) {
+            while (_settings.value.showModeActive && guestRecordings().isNotEmpty()) {
                 // Never the same message twice in a row when there is a choice.
-                val pool = recordings.value
+                val pool = guestRecordings()
                 val next = pool.filter { it.id != previous }.ifEmpty { pool }.random(random)
                 previous = next.id
                 moveTo(SessionState.Show(next.id))
@@ -459,6 +484,9 @@ class SessionViewModel(
             moveTo(SessionState.Idle)
         }
     }
+
+    /** The saved messages of the kinds the host allows, the only ones guests see and hear. */
+    private fun guestRecordings(): List<Recording> = recordings.value.filter { _settings.value.allows(it.mode) }
 
     /** The invitation, or show mode playing over it: a touch here starts a session. */
     private fun showsInvitation(state: SessionState): Boolean = state == SessionState.Idle || state is SessionState.Show

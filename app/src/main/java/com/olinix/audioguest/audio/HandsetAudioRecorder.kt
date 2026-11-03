@@ -9,22 +9,28 @@ import android.util.Log
 import java.io.File
 
 /**
- * Records voice messages as AAC (128 kbps, mono, 48 kHz) in an .m4a file,
- * from the handset microphone when it is plugged in.
+ * Records voice messages as AAC (128 kbps, mono, 48 kHz) in an .m4a file, from the handset
+ * microphone or the tablet's own, whichever the guest chose.
  */
 class HandsetAudioRecorder(private val context: Context) : MessageRecorder {
 
+    private var microphone = Microphone.HANDSET
     private var recorder: MediaRecorder? = null
     private var output: File? = null
     private var level = 0f
     private var lastSampleAt = 0L
+
+    override suspend fun prepare(microphone: Microphone): Boolean {
+        this.microphone = microphone
+        return true
+    }
 
     override suspend fun start(output: File): Boolean {
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "Microphone permission not granted")
             return false
         }
-        val handset = Handset.input(context)
+        val device = Handset.device(context, microphone)
         val mediaRecorder = MediaRecorder(context)
         return try {
             mediaRecorder.apply {
@@ -35,12 +41,12 @@ class HandsetAudioRecorder(private val context: Context) : MessageRecorder {
                 setAudioSamplingRate(48_000)
                 setAudioEncodingBitRate(128_000)
                 setOutputFile(output)
-                // Without this Android picks the tablet's built-in microphone.
-                if (handset != null) setPreferredDevice(handset)
+                // Named explicitly: left to itself, Android may pick the other microphone.
+                if (device != null) setPreferredDevice(device)
                 prepare()
                 start()
             }
-            Log.i(TAG, "Recording from ${handset?.productName ?: "the built-in microphone"}")
+            Log.i(TAG, "Recording from ${device?.productName ?: "the default microphone"} ($microphone chosen)")
             recorder = mediaRecorder
             this.output = output
             true

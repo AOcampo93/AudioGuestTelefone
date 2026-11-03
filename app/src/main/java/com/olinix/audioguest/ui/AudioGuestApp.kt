@@ -22,6 +22,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.copyVideo
 import com.olinix.audioguest.camera.CameraFeed
 import com.olinix.audioguest.session.RecordingMode
@@ -29,6 +30,7 @@ import com.olinix.audioguest.session.SessionConfig
 import com.olinix.audioguest.session.SessionState
 import com.olinix.audioguest.session.SessionViewModel
 import com.olinix.audioguest.session.isHostScreen
+import com.olinix.audioguest.settings.AllowedMessages
 import com.olinix.audioguest.ui.countdown.CountdownScreen
 import com.olinix.audioguest.ui.error.ErrorScreen
 import com.olinix.audioguest.ui.gallery.GalleryScreen
@@ -66,7 +68,13 @@ fun AudioGuestApp(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val welcomeVideo by viewModel.welcomeVideo.collectAsStateWithLifecycle()
     val welcomeProblem by viewModel.welcomeProblem.collectAsStateWithLifecycle()
+    val microphone by viewModel.microphone.collectAsStateWithLifecycle()
+    val playerSound by viewModel.playerSound.collectAsStateWithLifecycle()
     val event = eventInfoOf(settings)
+    // Guests only see and hear the kinds of message the host allows.
+    val guestRecordings = recordings.filter { settings.allows(it.mode) }
+    // The host records the welcome video with the tablet's own microphone.
+    val recordingMicrophone = if (state.isHostScreen) Microphone.TABLET else microphone
     val context = LocalContext.current
     // The host does not need the handset, so the warning stays off the host screens.
     val handsetMissing = viewModel.handsetMissing.collectAsStateWithLifecycle().value && !state.isHostScreen
@@ -109,6 +117,7 @@ fun AudioGuestApp(
                         event = event,
                         onFinish = viewModel::finishWelcome,
                         onPlayingChange = viewModel::onPlaybackChanged,
+                        sound = settings.welcomeSound,
                     )
                 }
                 is SessionState.Show -> recordings.firstOrNull { it.id == current.recordingId }?.let { recording ->
@@ -128,12 +137,16 @@ fun AudioGuestApp(
                     onChoose = viewModel::chooseMode,
                     onGallery = viewModel::openGallery,
                     showGallery = settings.showMessages,
+                    modes = settings.allowed.modes,
+                    microphone = microphone,
+                    onMicrophone = viewModel::chooseMicrophone,
                 )
-                is SessionState.Countdown -> CountdownScreen(current)
+                is SessionState.Countdown -> CountdownScreen(current, microphone = recordingMicrophone)
                 is SessionState.Capturing -> RecordingScreen(
                     state = current,
                     onFinish = viewModel::finishRecording,
                     level = viewModel::inputLevel,
+                    microphone = recordingMicrophone,
                 )
                 is SessionState.Review -> ReviewScreen(
                     state = current,
@@ -145,22 +158,25 @@ fun AudioGuestApp(
                 is SessionState.Saved -> SavedScreen(current, event)
                 is SessionState.Gallery -> GalleryScreen(
                     event = event,
-                    recordings = recordings,
+                    recordings = guestRecordings,
                     filter = current.filter,
                     fileOf = viewModel::fileOf,
                     onFilter = viewModel::showTab,
                     onOpen = viewModel::play,
                     onBack = viewModel::back,
                     onLeaveMessage = viewModel::back,
+                    showTabs = settings.allowed == AllowedMessages.BOTH,
                 )
                 is SessionState.Player -> PlayerScreen(
                     state = current,
-                    recordings = recordings,
+                    recordings = guestRecordings,
                     fileOf = viewModel::fileOf,
                     onPrevious = viewModel::playPrevious,
                     onNext = viewModel::playNext,
                     onBack = viewModel::back,
                     onPlayingChange = viewModel::onPlaybackChanged,
+                    sound = playerSound,
+                    onSound = viewModel::choosePlayerSound,
                 )
                 is SessionState.Error -> ErrorScreen(reason = current.reason, onBack = viewModel::back)
                 is SessionState.HostLogin -> HostLoginScreen(

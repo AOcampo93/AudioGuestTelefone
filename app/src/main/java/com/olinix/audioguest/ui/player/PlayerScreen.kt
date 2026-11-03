@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
 import com.olinix.audioguest.audio.Playback
+import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.audio.VideoFrame
 import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.data.Recording
@@ -37,6 +38,7 @@ import com.olinix.audioguest.ui.components.BackPill
 import com.olinix.audioguest.ui.components.CameraBackdrop
 import com.olinix.audioguest.ui.components.OutlineCircle
 import com.olinix.audioguest.ui.components.ProgressBar
+import com.olinix.audioguest.ui.components.SoundToggle
 import com.olinix.audioguest.ui.components.Waveform
 import com.olinix.audioguest.ui.components.screenBackground
 import com.olinix.audioguest.ui.theme.Ivory
@@ -47,8 +49,8 @@ import com.olinix.audioguest.util.formatDuration
 import java.io.File
 
 /**
- * Screen 11 · one saved message. It starts playing on its own; voice goes to the handset
- * and video plays on screen. Previous and next move through the tab the guest came from.
+ * Screen 11 · one saved message. It starts playing on its own, heard through the handset or the
+ * tablet's speaker as the guest picks at the top. Previous and next move through the tab the guest came from.
  */
 @Composable
 fun PlayerScreen(
@@ -60,6 +62,8 @@ fun PlayerScreen(
     onBack: () -> Unit,
     onPlayingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    sound: SoundOutput = SoundOutput.HANDSET,
+    onSound: (SoundOutput) -> Unit = {},
 ) {
     val playlist = state.filter.pick(recordings)
     val index = playlist.indexOfFirst { it.id == state.recordingId }
@@ -74,11 +78,11 @@ fun PlayerScreen(
         BackPill(onClick = onBack, text = stringResource(R.string.player_back_to_gallery))
         if (index >= 0) {
             val recording = playlist[index]
-            val playback = rememberPlayback(fileOf(recording), autoPlay = true, onPlayingChange = onPlayingChange)
+            val playback = rememberPlayback(fileOf(recording), autoPlay = true, onPlayingChange = onPlayingChange, sound = sound)
             Heading(recording, position = index + 1, count = playlist.size)
             when (recording.mode) {
-                RecordingMode.AUDIO -> VoiceBody(recording, playback, onPrevious, onNext)
-                RecordingMode.VIDEO -> VideoBody(recording, playback, onPrevious, onNext)
+                RecordingMode.AUDIO -> VoiceBody(recording, playback, sound, onSound, onPrevious, onNext)
+                RecordingMode.VIDEO -> VideoBody(recording, playback, sound, onSound, onPrevious, onNext)
             }
         }
     }
@@ -108,7 +112,15 @@ private fun HeadingText(text: String, color: Color = Taupe) {
 }
 
 @Composable
-private fun ColumnScope.VoiceBody(recording: Recording, playback: Playback, onPrevious: () -> Unit, onNext: () -> Unit) {
+private fun ColumnScope.VoiceBody(
+    recording: Recording,
+    playback: Playback,
+    sound: SoundOutput,
+    onSound: (SoundOutput) -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+) {
+    val speaker = sound == SoundOutput.SPEAKER
     val accent = MaterialTheme.colorScheme.primary
     Column(
         modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -123,9 +135,14 @@ private fun ColumnScope.VoiceBody(recording: Recording, playback: Playback, onPr
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(painterResource(R.drawable.ic_phone), contentDescription = null, tint = accent, modifier = Modifier.size(30.dp))
+            Icon(
+                painterResource(if (speaker) R.drawable.ic_speaker else R.drawable.ic_phone),
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(30.dp),
+            )
             Text(
-                text = stringResource(R.string.player_listen_handset),
+                text = stringResource(if (speaker) R.string.player_listen_speaker else R.string.player_listen_handset),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = accent,
@@ -141,11 +158,19 @@ private fun ColumnScope.VoiceBody(recording: Recording, playback: Playback, onPr
         )
         PlaybackPosition(playback, recording.durationSeconds)
         Controls(playback, onPrevious, onNext)
+        SoundToggle(selected = sound, onSelect = onSound)
     }
 }
 
 @Composable
-private fun ColumnScope.VideoBody(recording: Recording, playback: Playback, onPrevious: () -> Unit, onNext: () -> Unit) {
+private fun ColumnScope.VideoBody(
+    recording: Recording,
+    playback: Playback,
+    sound: SoundOutput,
+    onSound: (SoundOutput) -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+) {
     Box(
         Modifier
             .weight(1f)
@@ -157,6 +182,7 @@ private fun ColumnScope.VideoBody(recording: Recording, playback: Playback, onPr
     }
     PlaybackPosition(playback, recording.durationSeconds)
     Controls(playback, onPrevious, onNext, modifier = Modifier.padding(top = 8.dp))
+    SoundToggle(selected = sound, onSelect = onSound, modifier = Modifier.align(Alignment.CenterHorizontally))
 }
 
 /** 0:31 ━━━━━━──── 1:15 */

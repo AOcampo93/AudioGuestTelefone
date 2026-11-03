@@ -1,5 +1,7 @@
 package com.olinix.audioguest.settings
 
+import com.olinix.audioguest.audio.SoundOutput
+import com.olinix.audioguest.session.RecordingMode
 import java.time.LocalDate
 
 /** The kinds of event the panel offers. Each one asks for different names. */
@@ -27,6 +29,13 @@ enum class GuestLanguage(val tag: String) {
     ENGLISH("en"),
 }
 
+/** Which messages guests may leave. The gallery and show mode only show these too. */
+enum class AllowedMessages(val modes: Set<RecordingMode>) {
+    BOTH(setOf(RecordingMode.AUDIO, RecordingMode.VIDEO)),
+    VOICE_ONLY(setOf(RecordingMode.AUDIO)),
+    VIDEO_ONLY(setOf(RecordingMode.VIDEO)),
+}
+
 /**
  * Everything the host sets up in the panel. Each event type keeps its own names, so switching
  * types back and forth does not lose what was typed. Defaults are the mockup's examples.
@@ -47,7 +56,9 @@ data class HostSettings(
     val accent: Accent = Accent.GOLD,
     /** Play the host's welcome video when a guest taps the invitation. */
     val welcomeVideo: Boolean = false,
+    val welcomeSound: SoundOutput = SoundOutput.HANDSET,
     val language: GuestLanguage = GuestLanguage.PORTUGUESE,
+    val allowed: AllowedMessages = AllowedMessages.BOTH,
     /** "Ver grabaciones" in the menu. Off, messages are still saved but not shown on the tablet. */
     val showMessages: Boolean = true,
     /** Plays saved messages at random while nobody uses the booth. Needs [showMessages]. */
@@ -69,6 +80,9 @@ data class HostSettings(
 
     /** Show mode only makes sense when guests may see the messages. */
     val showModeActive: Boolean get() = showMode && showMessages
+
+    /** Whether guests may leave, see and hear messages of this kind. */
+    fun allows(mode: RecordingMode): Boolean = mode in allowed.modes
 
     companion object {
         /** Character limits from the mockup's "Campos por tipo de evento" table. */

@@ -38,6 +38,22 @@ object Handset {
     fun tabletSpeaker(context: Context): AudioDeviceInfo? =
         audioManager(context).getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
 
+    /** The tablet's own microphone, for guests who would rather speak towards the screen. */
+    fun tabletMicrophone(context: Context): AudioDeviceInfo? =
+        audioManager(context).getDevices(AudioManager.GET_DEVICES_INPUTS).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }
+
+    /** The device for [sound], or null to let Android choose, as it must when the handset is unplugged. */
+    fun device(context: Context, sound: SoundOutput): AudioDeviceInfo? = when (sound) {
+        SoundOutput.HANDSET -> output(context)
+        SoundOutput.SPEAKER -> tabletSpeaker(context)
+    }
+
+    /** The device for [microphone], or null to let Android choose. */
+    fun device(context: Context, microphone: Microphone): AudioDeviceInfo? = when (microphone) {
+        Microphone.HANDSET -> input(context)
+        Microphone.TABLET -> tabletMicrophone(context)
+    }
+
     /** Emits whether the handset is plugged in: once right away, then on every change. */
     fun connection(context: Context): Flow<Boolean> = callbackFlow {
         val audioManager = audioManager(context)

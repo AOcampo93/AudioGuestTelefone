@@ -67,11 +67,11 @@ class Playback internal constructor(internal val player: ExoPlayer) {
 
 /**
  * Creates a player for [file] that lives as long as the calling screen.
- * Sound goes to the handset when it is plugged in, otherwise to the tablet speakers.
  *
  * @param autoPlay start as soon as the file is ready, as the gallery player does.
  * @param onPlayingChange told when playback starts and stops, and `false` when the screen goes away.
- * @param throughSpeaker play on the tablet's speaker even with the handset plugged in, as show mode does.
+ * @param sound where it is heard. The handset falls back to the tablet speakers while it is unplugged.
+ *   Changing it moves the sound at once, without restarting.
  */
 // Choosing the output device is marked unstable in Media3: its signature may change between versions.
 @OptIn(UnstableApi::class)
@@ -80,21 +80,20 @@ fun rememberPlayback(
     file: File,
     autoPlay: Boolean = false,
     onPlayingChange: (Boolean) -> Unit = {},
-    throughSpeaker: Boolean = false,
+    sound: SoundOutput = SoundOutput.HANDSET,
 ): Playback {
     val context = LocalContext.current
     val player = remember(file) {
-        ExoPlayer.Builder(context)
-            // Pause if the handset is unplugged, instead of carrying on through the tablet speakers.
-            .setHandleAudioBecomingNoisy(true)
-            .build()
-            .apply {
-                setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
-                val output = if (throughSpeaker) Handset.tabletSpeaker(context) else Handset.output(context)
-                output?.let(::setPreferredAudioDevice)
-                playWhenReady = autoPlay
-                prepare()
-            }
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
+            playWhenReady = autoPlay
+            prepare()
+        }
+    }
+    LaunchedEffect(player, sound) {
+        player.setPreferredAudioDevice(Handset.device(context, sound))
+        // Pause if the handset is unplugged, instead of carrying on through the tablet speakers.
+        player.setHandleAudioBecomingNoisy(sound == SoundOutput.HANDSET)
     }
     val playback = remember(player) { Playback(player) }
     val reportPlaying by rememberUpdatedState(onPlayingChange)
