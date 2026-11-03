@@ -5,6 +5,9 @@ import java.io.File
 /** What the guest leaves. */
 enum class RecordingMode { AUDIO, VIDEO }
 
+/** The three parts of the host panel. */
+enum class HostSection { EVENT, WELCOME, GUESTS }
+
 /** Why a session ended on the error screen. */
 enum class ErrorReason { MICROPHONE_UNAVAILABLE, CAMERA_UNAVAILABLE, RECORDING_FAILED }
 
@@ -20,21 +23,28 @@ sealed class SessionState {
     /** Voice · Video · View messages. */
     data object Menu : SessionState()
 
-    /** 3, 2, 1 and "¡Ahora!" (number 0). */
-    data class Countdown(val mode: RecordingMode, val number: Int) : SessionState()
+    /** The host's welcome video plays before the menu; guests can skip it. */
+    data object Welcome : SessionState()
+
+    /**
+     * 3, 2, 1 and "¡Ahora!" (number 0).
+     * [welcome] marks the host recording the welcome video from the panel, here and in the next two states.
+     */
+    data class Countdown(val mode: RecordingMode, val number: Int, val welcome: Boolean = false) : SessionState()
 
     /** Recording in progress. Named Capturing so it does not clash with the gallery's Recording data class. */
     data class Capturing(
         val mode: RecordingMode,
         val elapsedSeconds: Int,
         val maxSeconds: Int,
+        val welcome: Boolean = false,
     ) : SessionState() {
         val remainingSeconds: Int get() = maxSeconds - elapsedSeconds
         val progress: Float get() = elapsedSeconds.toFloat() / maxSeconds
     }
 
     /** Play back before saving: Save · Retry · Discard. [file] is still pending until saved. */
-    data class Review(val mode: RecordingMode, val durationSeconds: Int, val file: File) : SessionState()
+    data class Review(val mode: RecordingMode, val durationSeconds: Int, val file: File, val welcome: Boolean = false) : SessionState()
 
     /** "¡Gracias!" and automatic return to Idle. */
     data class Saved(val secondsLeft: Int, val totalSeconds: Int) : SessionState()
@@ -48,9 +58,22 @@ sealed class SessionState {
     /** Something failed: a clear message and what to do. */
     data class Error(val reason: ErrorReason) : SessionState()
 
+    /** Show mode: a saved message plays by itself while nobody uses the booth. */
+    data class Show(val recordingId: Long) : SessionState()
+
     /** Host PIN pad, opened from a hidden corner of the invitation. [digits] says how many dots to fill. */
     data class HostLogin(val digits: Int = 0, val wrongPin: Boolean = false) : SessionState()
 
     /** Host panel, only reachable with the PIN. */
-    data object HostPanel : SessionState()
+    data class HostPanel(val section: HostSection = HostSection.EVENT) : SessionState()
 }
+
+/** Screens for the host rather than guests: the PIN pad, the panel and recording the welcome video. */
+val SessionState.isHostScreen: Boolean
+    get() = when (this) {
+        is SessionState.HostLogin, is SessionState.HostPanel -> true
+        is SessionState.Countdown -> welcome
+        is SessionState.Capturing -> welcome
+        is SessionState.Review -> welcome
+        else -> false
+    }

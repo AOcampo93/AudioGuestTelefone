@@ -33,6 +33,10 @@ class Playback internal constructor(internal val player: ExoPlayer) {
     var positionMs by mutableLongStateOf(0L)
         private set
 
+    /** Played to the end, as the welcome video needs to know to move on to the menu. */
+    var ended by mutableStateOf(false)
+        private set
+
     /** Zero until the file is loaded. Kept as state so [progress] updates the screen once it is known. */
     private var durationMs by mutableLongStateOf(0L)
 
@@ -53,6 +57,7 @@ class Playback internal constructor(internal val player: ExoPlayer) {
 
     internal fun refresh() {
         isPlaying = player.isPlaying
+        ended = player.playbackState == Player.STATE_ENDED
         // The player reports an unknown length (a negative constant) until the file is loaded.
         durationMs = player.duration.coerceAtLeast(0L)
         // At the end, show the full length instead of a few milliseconds short.
@@ -66,11 +71,17 @@ class Playback internal constructor(internal val player: ExoPlayer) {
  *
  * @param autoPlay start as soon as the file is ready, as the gallery player does.
  * @param onPlayingChange told when playback starts and stops, and `false` when the screen goes away.
+ * @param throughSpeaker play on the tablet's speaker even with the handset plugged in, as show mode does.
  */
 // Choosing the output device is marked unstable in Media3: its signature may change between versions.
 @OptIn(UnstableApi::class)
 @Composable
-fun rememberPlayback(file: File, autoPlay: Boolean = false, onPlayingChange: (Boolean) -> Unit = {}): Playback {
+fun rememberPlayback(
+    file: File,
+    autoPlay: Boolean = false,
+    onPlayingChange: (Boolean) -> Unit = {},
+    throughSpeaker: Boolean = false,
+): Playback {
     val context = LocalContext.current
     val player = remember(file) {
         ExoPlayer.Builder(context)
@@ -79,7 +90,8 @@ fun rememberPlayback(file: File, autoPlay: Boolean = false, onPlayingChange: (Bo
             .build()
             .apply {
                 setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
-                Handset.output(context)?.let(::setPreferredAudioDevice)
+                val output = if (throughSpeaker) Handset.tabletSpeaker(context) else Handset.output(context)
+                output?.let(::setPreferredAudioDevice)
                 playWhenReady = autoPlay
                 prepare()
             }
@@ -109,15 +121,15 @@ fun rememberPlayback(file: File, autoPlay: Boolean = false, onPlayingChange: (Bo
     return playback
 }
 
-/** The picture of a video [playback], letterboxed to fit. */
+/** The picture of a video [playback], letterboxed to fit unless [contentScale] says otherwise. */
 @OptIn(UnstableApi::class)
 @Composable
-fun VideoFrame(playback: Playback, modifier: Modifier = Modifier) {
+fun VideoFrame(playback: Playback, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Fit) {
     // A texture view, unlike a surface view, respects the rounded corners of its container.
     ContentFrame(
         player = playback.player,
         modifier = modifier,
         surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
-        contentScale = ContentScale.Fit,
+        contentScale = contentScale,
     )
 }

@@ -2,9 +2,11 @@ package com.olinix.audioguest
 
 import android.Manifest
 import android.app.ActivityManager
+import android.app.LocaleManager
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
+import android.os.LocaleList
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -14,6 +16,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -24,11 +29,15 @@ import com.olinix.audioguest.audio.HandsetAudioRecorder
 import com.olinix.audioguest.audio.RecordingFiles
 import com.olinix.audioguest.data.LocalRecordingRepository
 import com.olinix.audioguest.lights.NoOpLightController
-import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.SessionConfig
 import com.olinix.audioguest.session.SessionViewModel
 import com.olinix.audioguest.ui.AudioGuestApp
 import com.olinix.audioguest.ui.theme.AudioGuestTheme
+import com.olinix.audioguest.ui.theme.color
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -54,6 +63,7 @@ class MainActivity : ComponentActivity() {
                     videoRecorder = app.camera,
                     files = RecordingFiles(filesDir),
                     repository = LocalRecordingRepository(app.database.recordings()),
+                    hostSettings = app.settings,
                     handsetConnected = Handset.connection(applicationContext),
                     config = config,
                 )
@@ -75,17 +85,30 @@ class MainActivity : ComponentActivity() {
         hideSystemBars()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         askForMissingPermissions()
+        followGuestLanguage()
 
         val camera = (application as AudioGuestApplication).camera
         setContent {
-            AudioGuestTheme {
+            val settings by session.settings.collectAsStateWithLifecycle()
+            AudioGuestTheme(accent = settings.accent.color) {
                 AudioGuestApp(
                     viewModel = session,
                     cameraPreview = camera.preview,
-                    event = EventInfo.Sample,
                     config = config,
                     onExitApp = ::exitKiosk,
                 )
+            }
+        }
+    }
+
+    /** Guests see the app in the language the host picked. Android remembers it per app and restarts the screen. */
+    private fun followGuestLanguage() {
+        lifecycleScope.launch {
+            session.settingsLoaded.first { it }
+            session.settings.map { it.language }.distinctUntilChanged().collect { language ->
+                val localeManager = getSystemService(LocaleManager::class.java)
+                val wanted = LocaleList.forLanguageTags(language.tag)
+                if (localeManager.applicationLocales != wanted) localeManager.applicationLocales = wanted
             }
         }
     }

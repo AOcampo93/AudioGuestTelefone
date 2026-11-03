@@ -62,6 +62,7 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.video)
     implementation(libs.androidx.camera.compose)
+    implementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     debugImplementation(libs.androidx.compose.ui.tooling)

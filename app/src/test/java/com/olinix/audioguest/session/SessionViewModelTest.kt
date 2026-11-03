@@ -6,6 +6,10 @@ import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.data.RecordingRepository
 import com.olinix.audioguest.lights.LightController
 import com.olinix.audioguest.lights.LightScene
+import com.olinix.audioguest.settings.Accent
+import com.olinix.audioguest.settings.EventType
+import com.olinix.audioguest.settings.HostSettings
+import com.olinix.audioguest.settings.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +23,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -38,6 +43,7 @@ class SessionViewModelTest {
     private val voice = FakeRecorder()
     private val video = FakeRecorder()
     private val repository = FakeRepository()
+    private val hostSettings = FakeSettings()
     private val handset = MutableStateFlow(true)
     private lateinit var recordings: File
     private lateinit var viewModel: SessionViewModel
@@ -45,7 +51,7 @@ class SessionViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        viewModel = SessionViewModel(lights, voice, video, RecordingFiles(folder.root), repository, handset)
+        viewModel = SessionViewModel(lights, voice, video, RecordingFiles(folder.root), repository, hostSettings, handset)
         recordings = File(folder.root, "recordings")
     }
 
@@ -276,7 +282,7 @@ class SessionViewModelTest {
     fun theEmulatorCanRunWithoutAHandset() = runTest(dispatcher) {
         handset.value = false
         val emulator = SessionViewModel(
-            lights, voice, video, RecordingFiles(folder.root), repository, handset,
+            lights, voice, video, RecordingFiles(folder.root), repository, hostSettings, handset,
             SessionConfig(requireHandset = false),
         )
         runCurrent()
@@ -317,7 +323,7 @@ class SessionViewModelTest {
         assertEquals(SessionState.HostLogin(digits = 3), viewModel.state.value)
 
         viewModel.typePinDigit(6)
-        assertEquals(SessionState.HostPanel, viewModel.state.value)
+        assertEquals(SessionState.HostPanel(), viewModel.state.value)
         assertEquals(LightScene.MENU, lights.shown.last())
     }
 
@@ -331,7 +337,7 @@ class SessionViewModelTest {
         listOf(2, 0, 9).forEach(viewModel::typePinDigit)
         viewModel.erasePinDigit()
         listOf(2, 6).forEach(viewModel::typePinDigit)
-        assertEquals(SessionState.HostPanel, viewModel.state.value)
+        assertEquals(SessionState.HostPanel(), viewModel.state.value)
     }
 
     @Test
@@ -343,14 +349,157 @@ class SessionViewModelTest {
 
     @Test
     fun aForgottenHostPanelClosesItself() = runTest(dispatcher) {
-        viewModel.openHostLogin()
-        listOf(2, 0, 2, 6).forEach(viewModel::typePinDigit)
-        waitSeconds(30)
+        openHostPanel()
+        // Typing a name counts as activity, since the keyboard does not touch the screen.
+        waitSeconds(100)
+        viewModel.updateSettings { it.copy(name1 = "Ana María") }
+        waitSeconds(100)
+        assertTrue(viewModel.state.value is SessionState.HostPanel)
+
+        waitSeconds(20)
         assertEquals(SessionState.Idle, viewModel.state.value)
 
         viewModel.openHostLogin()
         viewModel.back()
         assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
+    @Test
+    fun hostChangesApplyAtOnceAndAreSaved() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.showHostSection(HostSection.GUESTS)
+        assertEquals(SessionState.HostPanel(HostSection.GUESTS), viewModel.state.value)
+
+        viewModel.updateSettings { it.withType(EventType.CHRISTMAS) }
+        assertEquals(Accent.RED, viewModel.settings.value.accent)
+        runCurrent()
+        assertEquals(EventType.CHRISTMAS, hostSettings.saved?.type)
+
+        // Outside the panel nothing can change the settings.
+        viewModel.back()
+        viewModel.updateSettings { it.withType(EventType.COMPANY) }
+        assertEquals(EventType.CHRISTMAS, viewModel.settings.value.type)
+    }
+
+    @Test
+    fun savedSettingsAreLoadedAtStart() = runTest(dispatcher) {
+        hostSettings.saved = HostSettings(type = EventType.BIRTHDAY, birthdayName = "Lucía")
+        val restarted = SessionViewModel(lights, voice, video, RecordingFiles(folder.root), repository, hostSettings, handset)
+        runCurrent()
+        assertEquals("Lucía", restarted.settings.value.hosts)
+    }
+
+    @Test
+    fun hiddenMessagesKeepGuestsOutOfTheGallery() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.updateSettings { it.copy(showMessages = false) }
+        viewModel.back()
+
+        viewModel.start()
+        viewModel.openGallery()
+        assertEquals(SessionState.Menu, viewModel.state.value)
+    }
+
+    @Test
+    fun showModePlaysMessagesWhileNobodyComes() = runTest(dispatcher) {
+        repository.saved.value = listOf(
+            Recording(1, RecordingMode.AUDIO, "voice-1.m4a", durationSeconds = 40, savedAt = 1),
+            Recording(2, RecordingMode.VIDEO, "video-2.mp4", durationSeconds = 25, savedAt = 2),
+        )
+        openHostPanel()
+        viewModel.updateSettings { it.copy(showMode = true, showAfterSeconds = 30) }
+        viewModel.back()
+
+        waitSeconds(29)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        waitSeconds(1)
+        val first = viewModel.state.value as SessionState.Show
+        assertEquals(LightScene.INVITATION, lights.shown.last())
+
+        // Long messages are cut at 15 s, and the next one is a different message.
+        waitSeconds(15)
+        val second = viewModel.state.value as SessionState.Show
+        assertNotEquals(first.recordingId, second.recordingId)
+
+        // A touch starts a session, and the show does not come back over the menu.
+        viewModel.start()
+        assertEquals(SessionState.Menu, viewModel.state.value)
+        waitSeconds(20)
+        assertEquals(SessionState.Menu, viewModel.state.value)
+
+        // Show mode never ends by itself, so it is switched off before the test finishes.
+        viewModel.back()
+        openHostPanel()
+        viewModel.updateSettings { it.copy(showMode = false) }
+        viewModel.back()
+    }
+
+    @Test
+    fun showModeNeedsVisibleMessages() = runTest(dispatcher) {
+        repository.saved.value = listOf(Recording(1, RecordingMode.AUDIO, "voice-1.m4a", durationSeconds = 40, savedAt = 1))
+        openHostPanel()
+        viewModel.updateSettings { it.copy(showMode = true, showMessages = false, showAfterSeconds = 30) }
+        viewModel.back()
+
+        waitSeconds(60)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
+    @Test
+    fun theHostRecordsAWelcomeVideoThatGuestsSeeFirst() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.recordWelcome()
+        runCurrent()
+        waitSeconds(4)
+        assertEquals(SessionState.Capturing(RecordingMode.VIDEO, 0, 30, welcome = true), viewModel.state.value)
+
+        // It stops by itself at 30 s, and saving it goes back to the panel instead of "¡Gracias!".
+        waitSeconds(30)
+        assertTrue((viewModel.state.value as SessionState.Review).welcome)
+        viewModel.save()
+        assertEquals(SessionState.HostPanel(HostSection.WELCOME), viewModel.state.value)
+        assertTrue(viewModel.settings.value.welcomeVideo)
+        assertTrue(File(folder.root, "welcome.mp4").exists())
+        assertTrue(repository.saved.value.isEmpty())
+
+        viewModel.back()
+        viewModel.start()
+        assertEquals(SessionState.Welcome, viewModel.state.value)
+        viewModel.finishWelcome()
+        assertEquals(SessionState.Menu, viewModel.state.value)
+    }
+
+    @Test
+    fun aChosenWelcomeVideoMustBeShort() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.importWelcome { target -> target.writeText("video"); 45 }
+        runCurrent()
+        assertEquals(WelcomeProblem.TOO_LONG, viewModel.welcomeProblem.value)
+        assertNull(viewModel.welcomeVideo.value)
+
+        viewModel.importWelcome { target -> target.writeText("video"); 18 }
+        runCurrent()
+        assertNull(viewModel.welcomeProblem.value)
+        assertEquals(1, viewModel.welcomeVideo.value?.version)
+
+        viewModel.deleteWelcome()
+        assertNull(viewModel.welcomeVideo.value)
+        assertFalse(viewModel.settings.value.welcomeVideo)
+        viewModel.back()
+        viewModel.start()
+        assertEquals(SessionState.Menu, viewModel.state.value)
+    }
+
+    @Test
+    fun theHostRecordsTheWelcomeWithoutTheHandset() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.recordWelcome()
+        runCurrent()
+        waitSeconds(6)
+        handset.value = false
+        runCurrent()
+        assertTrue((viewModel.state.value as SessionState.Capturing).welcome)
+        assertTrue(video.isRecording)
     }
 
     private fun TestScope.startRecording(mode: RecordingMode) {
@@ -361,6 +510,12 @@ class SessionViewModelTest {
     }
 
     /** Presses "Terminar" and lets the recorder finish the file. */
+    private fun TestScope.openHostPanel() {
+        viewModel.openHostLogin()
+        listOf(2, 0, 2, 6).forEach(viewModel::typePinDigit)
+        runCurrent()
+    }
+
     private fun TestScope.finish() {
         viewModel.finishRecording()
         runCurrent()
@@ -386,6 +541,16 @@ class SessionViewModelTest {
         override suspend fun add(mode: RecordingMode, file: File, durationSeconds: Int) {
             val id = saved.value.size + 1L
             saved.value = listOf(Recording(id, mode, file.name, durationSeconds, savedAt = id)) + saved.value
+        }
+    }
+
+    private class FakeSettings : SettingsRepository {
+        var saved: HostSettings? = null
+
+        override suspend fun load(): HostSettings = saved ?: HostSettings()
+
+        override suspend fun save(settings: HostSettings) {
+            saved = settings
         }
     }
 

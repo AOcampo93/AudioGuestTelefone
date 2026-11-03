@@ -1,6 +1,5 @@
 package com.olinix.audioguest.ui.gallery
 
-import android.media.MediaMetadataRetriever
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,16 +24,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -46,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.audio.rememberVideoFrame
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.GalleryFilter
@@ -66,8 +63,6 @@ import com.olinix.audioguest.ui.theme.Scrim
 import com.olinix.audioguest.ui.theme.SurfaceRaised
 import com.olinix.audioguest.util.formatClockTime
 import com.olinix.audioguest.util.formatDuration
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 
 /** Three rows of tiles fit on screen; a fourth peeks in to show the list scrolls. */
@@ -281,22 +276,6 @@ private fun VideoTile(recording: Recording, file: File, onClick: () -> Unit, mod
 @Composable
 private fun TileText(text: String, modifier: Modifier = Modifier) {
     Text(text = text, fontSize = 22.sp, fontWeight = FontWeight.Medium, color = Ivory, style = MaterialTheme.typography.bodyMedium, modifier = modifier)
-}
-
-/** A frame half a second into the video, read off the main thread. Null until it is ready or if it fails. */
-@Composable
-private fun rememberVideoFrame(file: File): ImageBitmap? {
-    val frame by produceState<ImageBitmap?>(initialValue = null, file) {
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                MediaMetadataRetriever().use { retriever ->
-                    retriever.setDataSource(file.path)
-                    retriever.getFrameAtTime(500_000)?.asImageBitmap()
-                }
-            }.getOrNull()
-        }
-    }
-    return frame
 }
 
 /** "Todavía no hay mensajes. ¡Sé el primero!" with a shortcut back to the menu. */

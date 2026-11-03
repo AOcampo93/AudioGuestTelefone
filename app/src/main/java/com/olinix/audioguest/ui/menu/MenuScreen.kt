@@ -53,6 +53,8 @@ fun MenuScreen(
     onChoose: (RecordingMode) -> Unit,
     onGallery: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Off when the host hides the messages from guests. */
+    showGallery: Boolean = true,
 ) {
     Column(
         modifier = modifier
@@ -85,7 +87,7 @@ fun MenuScreen(
                 hint = stringResource(R.string.menu_video_hint),
                 onClick = { onChoose(RecordingMode.VIDEO) },
             )
-            GalleryCard(onClick = onGallery)
+            if (showGallery) GalleryCard(onClick = onGallery)
         }
     }
 }
@@ -95,7 +97,7 @@ fun MenuScreen(
 fun EventTitle(event: EventInfo, title: String, modifier: Modifier = Modifier, trailing: String? = null) {
     Column(modifier) {
         Text(
-            text = "${event.label} ${event.hosts}",
+            text = event.headline,
             style = MaterialTheme.typography.headlineMedium,
             fontSize = 32.sp,
             lineHeight = 36.sp,

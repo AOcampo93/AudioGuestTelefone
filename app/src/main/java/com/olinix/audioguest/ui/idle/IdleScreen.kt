@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -106,7 +107,8 @@ private fun EventHeadline(event: EventInfo, accent: Color) {
         Spacer(Modifier.height(10.dp))
         Text(
             text = event.hosts,
-            style = MaterialTheme.typography.displayLarge,
+            // Long names wrap onto two balanced lines instead of leaving one word alone.
+            style = MaterialTheme.typography.displayLarge.copy(lineBreak = LineBreak.Heading),
             fontSize = 108.sp,
             lineHeight = 108.sp,
             textAlign = TextAlign.Center,

@@ -19,14 +19,16 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.olinix.audioguest.audio.copyVideo
 import com.olinix.audioguest.camera.CameraFeed
 import com.olinix.audioguest.session.RecordingMode
-import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.SessionConfig
 import com.olinix.audioguest.session.SessionState
 import com.olinix.audioguest.session.SessionViewModel
+import com.olinix.audioguest.session.isHostScreen
 import com.olinix.audioguest.ui.countdown.CountdownScreen
 import com.olinix.audioguest.ui.error.ErrorScreen
 import com.olinix.audioguest.ui.gallery.GalleryScreen
@@ -34,12 +36,15 @@ import com.olinix.audioguest.ui.handset.ConnectHandsetOverlay
 import com.olinix.audioguest.ui.host.HostCorner
 import com.olinix.audioguest.ui.host.HostLoginScreen
 import com.olinix.audioguest.ui.host.HostPanelScreen
+import com.olinix.audioguest.ui.host.WelcomeActions
 import com.olinix.audioguest.ui.idle.IdleScreen
 import com.olinix.audioguest.ui.menu.MenuScreen
 import com.olinix.audioguest.ui.player.PlayerScreen
 import com.olinix.audioguest.ui.recording.RecordingScreen
 import com.olinix.audioguest.ui.review.ReviewScreen
 import com.olinix.audioguest.ui.saved.SavedScreen
+import com.olinix.audioguest.ui.show.ShowScreen
+import com.olinix.audioguest.ui.welcome.WelcomeScreen
 import com.olinix.audioguest.ui.theme.Charcoal
 import kotlinx.coroutines.flow.StateFlow
 
@@ -53,14 +58,18 @@ import kotlinx.coroutines.flow.StateFlow
 fun AudioGuestApp(
     viewModel: SessionViewModel,
     cameraPreview: StateFlow<SurfaceRequest?>,
-    event: EventInfo,
     config: SessionConfig,
     onExitApp: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recordings by viewModel.recordings.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val welcomeVideo by viewModel.welcomeVideo.collectAsStateWithLifecycle()
+    val welcomeProblem by viewModel.welcomeProblem.collectAsStateWithLifecycle()
+    val event = eventInfoOf(settings)
+    val context = LocalContext.current
     // The host does not need the handset, so the warning stays off the host screens.
-    val handsetMissing = viewModel.handsetMissing.collectAsStateWithLifecycle().value && !state.isHostScreen()
+    val handsetMissing = viewModel.handsetMissing.collectAsStateWithLifecycle().value && !state.isHostScreen
 
     // In a kiosk the system back gesture only steps back inside the guest flow.
     BackHandler { viewModel.back() }
@@ -94,12 +103,31 @@ fun AudioGuestApp(
         ) { current ->
             when (current) {
                 SessionState.Idle -> IdleScreen(event = event, onTap = viewModel::start)
+                SessionState.Welcome -> welcomeVideo?.let { video ->
+                    WelcomeScreen(
+                        welcome = video,
+                        event = event,
+                        onFinish = viewModel::finishWelcome,
+                        onPlayingChange = viewModel::onPlaybackChanged,
+                    )
+                }
+                is SessionState.Show -> recordings.firstOrNull { it.id == current.recordingId }?.let { recording ->
+                    ShowScreen(
+                        recording = recording,
+                        file = viewModel.fileOf(recording),
+                        clipSeconds = config.showSecondsFor(recording.durationSeconds),
+                        event = event,
+                        onTap = viewModel::start,
+                        onPlayingChange = viewModel::onPlaybackChanged,
+                    )
+                }
                 SessionState.Menu -> MenuScreen(
                     event = event,
                     config = config,
                     onBack = viewModel::back,
                     onChoose = viewModel::chooseMode,
                     onGallery = viewModel::openGallery,
+                    showGallery = settings.showMessages,
                 )
                 is SessionState.Countdown -> CountdownScreen(current)
                 is SessionState.Capturing -> RecordingScreen(
@@ -142,7 +170,24 @@ fun AudioGuestApp(
                     onErase = viewModel::erasePinDigit,
                     onBack = viewModel::back,
                 )
-                SessionState.HostPanel -> HostPanelScreen(event = event, onClose = viewModel::back, onExitApp = onExitApp)
+                is SessionState.HostPanel -> HostPanelScreen(
+                    state = current,
+                    settings = settings,
+                    event = event,
+                    onSection = viewModel::showHostSection,
+                    onChange = viewModel::updateSettings,
+                    onClose = viewModel::back,
+                    onExitApp = onExitApp,
+                    welcome = WelcomeActions(
+                        video = welcomeVideo,
+                        problem = welcomeProblem,
+                        maxSeconds = config.maxWelcomeSeconds,
+                        onRecord = viewModel::recordWelcome,
+                        onImport = { uri -> viewModel.importWelcome { target -> copyVideo(context, uri, target) } },
+                        onDelete = viewModel::deleteWelcome,
+                        onPlayingChange = viewModel::onPlaybackChanged,
+                    ),
+                )
             }
         }
 
@@ -155,7 +200,6 @@ fun AudioGuestApp(
     }
 }
 
-private fun SessionState.isHostScreen(): Boolean = this is SessionState.HostLogin || this == SessionState.HostPanel
 
 private fun SessionState.showsCamera(): Boolean = when (this) {
     is SessionState.Countdown -> mode == RecordingMode.VIDEO

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">AudioGuestTelefone</string>
+    <string name="app_name" translatable="false">AudioGuestTelefone</string>
 
     <!-- Idle / invitation -->
     <string name="idle_title">Toma el auricular y toca la pantalla</string>
@@ -70,7 +70,7 @@
 
     <!-- Player -->
     <string name="player_back_to_gallery">Volver a la galería</string>
-    <string name="player_heading">%1$s · %2$s</string>
+    <string name="player_heading" translatable="false">%1$s · %2$s</string>
     <string name="player_position">%1$d de %2$d</string>
     <string name="player_listen_handset">Escúchalo por el auricular</string>
     <string name="player_previous">Anterior</string>
@@ -90,23 +90,119 @@
     <string name="error_hint">Avisa al anfitrión si vuelve a pasar.</string>
     <string name="error_back_to_start">Volver al inicio</string>
 
-    <!-- Host access -->
-    <string name="host_login_title">Acceso del anfitrión</string>
-    <string name="host_login_body">Introduce tu PIN de 4 dígitos para configurar el evento.</string>
-    <string name="host_login_wrong">PIN incorrecto. Inténtalo de nuevo.</string>
-    <string name="host_login_erase">Borrar</string>
-    <string name="host_back_to_kiosk">Volver al kiosco</string>
+    <!-- Welcome video and show mode -->
+    <string name="welcome_chip">Un mensaje de bienvenida</string>
+    <string name="welcome_skip">Saltar</string>
+    <string name="show_chip">Mensajes de los invitados</string>
+    <string name="show_cta">Toca y deja el tuyo</string>
 
-    <!-- Host panel -->
-    <string name="host_panel_title">Panel del anfitrión</string>
-    <string name="host_close">Cerrar y volver</string>
-    <string name="host_kiosk_title">Kiosco</string>
-    <string name="host_kiosk_body">Los invitados no pueden salir de la app.</string>
-    <string name="host_exit_title">Salir de la app</string>
-    <string name="host_exit_body">Quita la fijación y cierra la app. Para volver al kiosco, ábrela desde su icono.</string>
-    <string name="host_exit">Salir</string>
-    <string name="host_exit_confirm_title">¿Salir de la app?</string>
-    <string name="host_exit_confirm_body">Los invitados no podrán dejar mensajes hasta que la vuelvas a abrir.</string>
-    <string name="host_exit_keep">No, quedarme</string>
-    <string name="host_exit_confirm">Sí, salir</string>
+    <!-- Event, as guests see it -->
+    <string name="event_label_wedding">Boda de</string>
+    <string name="event_label_christmas">Navidad con</string>
+    <string name="event_label_birthday">Cumpleaños de</string>
+    <plurals name="event_label_birthday_age">
+        <item quantity="one">%1$d año de</item>
+        <item quantity="other">%1$d años de</item>
+    </plurals>
+    <string name="event_label_company">Evento de</string>
+    <string name="event_label_other">Celebración de</string>
+    <!-- java.time pattern for the date on the invitation: 14 de junio de 2027 -->
+    <string name="event_date_pattern">d \'de\' MMMM \'de\' yyyy</string>
+
+    <!-- Host access and panel: always in Spanish, whatever the guest language -->
+    <string name="host_login_title" translatable="false">Acceso del anfitrión</string>
+    <string name="host_login_body" translatable="false">Introduce tu PIN de 4 dígitos para configurar el evento.</string>
+    <string name="host_login_wrong" translatable="false">PIN incorrecto. Inténtalo de nuevo.</string>
+    <string name="host_login_erase" translatable="false">Borrar</string>
+    <string name="host_back_to_kiosk" translatable="false">Volver al kiosco</string>
+    <string name="host_panel_title" translatable="false">Panel del anfitrión</string>
+    <string name="host_close" translatable="false">Cerrar y volver</string>
+    <string name="host_autosaved" translatable="false">Guardado automático</string>
+
+    <string name="host_tab_event" translatable="false">Evento</string>
+    <string name="host_tab_welcome" translatable="false">Bienvenida</string>
+    <string name="host_tab_guests" translatable="false">Invitados</string>
+    <string name="host_event_title" translatable="false">Evento</string>
+    <string name="host_event_body" translatable="false">Tipo de evento, nombres, fecha y color.</string>
+    <string name="host_welcome_title" translatable="false">Video de bienvenida</string>
+    <string name="host_welcome_body" translatable="false">Un saludo en video antes de que los invitados graben.</string>
+    <string name="host_guests_title" translatable="false">Experiencia del invitado</string>
+    <string name="host_guests_body" translatable="false">Idioma, galería de mensajes y Modo Show.</string>
+
+    <string name="host_event_type" translatable="false">Tipo de evento</string>
+    <string name="host_type_wedding" translatable="false">Boda</string>
+    <string name="host_type_christmas" translatable="false">Navidad</string>
+    <string name="host_type_birthday" translatable="false">Cumpleaños</string>
+    <string name="host_type_company" translatable="false">Empresa</string>
+    <string name="host_type_other" translatable="false">Otro</string>
+    <string name="host_couple" translatable="false">Nombres de los novios</string>
+    <string name="host_name_1" translatable="false">Nombre 1</string>
+    <string name="host_name_2" translatable="false">Nombre 2</string>
+    <string name="host_family" translatable="false">Familia o anfitriones</string>
+    <string name="host_family_hint" translatable="false">Ej.: Família Souza</string>
+    <string name="host_birthday_name" translatable="false">Nombre del cumpleañero/a</string>
+    <string name="host_birthday_name_hint" translatable="false">Ej.: Lucía</string>
+    <string name="host_age" translatable="false">Edad</string>
+    <string name="host_optional" translatable="false">(opcional)</string>
+    <string name="host_company_event" translatable="false">Nombre del evento</string>
+    <string name="host_company_event_hint" translatable="false">Ej.: Cena de fin de año</string>
+    <string name="host_company" translatable="false">Empresa u organizador</string>
+    <string name="host_company_hint" translatable="false">Ej.: Grupo Atlas</string>
+    <string name="host_other_title" translatable="false">Título del evento</string>
+    <string name="host_other_title_hint" translatable="false">Ej.: Graduación de</string>
+    <string name="host_other_hosts" translatable="false">Protagonistas o anfitriones</string>
+    <string name="host_other_hosts_hint" translatable="false">Ej.: Sofía Ramírez</string>
+    <string name="host_date" translatable="false">Fecha del evento</string>
+    <string name="host_date_ok" translatable="false">Aceptar</string>
+    <string name="host_date_cancel" translatable="false">Cancelar</string>
+    <string name="host_preview" translatable="false">Vista previa · Reposo</string>
+    <string name="host_accent" translatable="false">Color de acento</string>
+    <string name="host_accent_default" translatable="false">Predeterminado para %1$s: %2$s</string>
+    <string name="host_accent_gold" translatable="false">Dorado</string>
+    <string name="host_accent_red" translatable="false">Rojo</string>
+    <string name="host_accent_green" translatable="false">Verde</string>
+    <string name="host_accent_blue" translatable="false">Azul</string>
+    <string name="host_accent_pink" translatable="false">Rosa</string>
+
+    <string name="host_welcome_show" translatable="false">Mostrar video de bienvenida</string>
+    <string name="host_welcome_show_body" translatable="false">Opcional. Se reproduce al tocar la pantalla, antes del menú. Los invitados pueden saltarlo.</string>
+    <string name="host_welcome_record" translatable="false">Grabar con la tablet</string>
+    <string name="host_welcome_pick" translatable="false">Elegir un archivo</string>
+    <string name="host_welcome_delete" translatable="false">Eliminar video</string>
+    <string name="host_welcome_none" translatable="false">Todavía no hay video</string>
+    <string name="host_welcome_too_long" translatable="false">Ese video dura más de %1$d s. Elige uno más corto o grábalo con la tablet.</string>
+    <string name="host_welcome_unreadable" translatable="false">No se pudo abrir ese archivo como video.</string>
+    <string name="host_welcome_idea" translatable="false">Idea</string>
+    <string name="host_welcome_idea_wedding" translatable="false">Los novios dando la bienvenida e invitando a dejar un mensaje.</string>
+    <string name="host_welcome_idea_christmas" translatable="false">Santa Claus saludando e invitando a todos a dejar su mensaje navideño.</string>
+    <string name="host_welcome_idea_birthday" translatable="false">El cumpleañero/a saludando a sus invitados.</string>
+    <string name="host_welcome_idea_company" translatable="false">La dirección dando la bienvenida al equipo.</string>
+    <string name="host_welcome_idea_other" translatable="false">Los anfitriones invitando a dejar un mensaje.</string>
+    <string name="host_welcome_delete_title" translatable="false">¿Eliminar el video de bienvenida?</string>
+    <string name="host_welcome_delete_body" translatable="false">Los invitados pasarán directo al menú.</string>
+    <string name="host_welcome_delete_keep" translatable="false">No, conservar</string>
+    <string name="host_welcome_delete_confirm" translatable="false">Sí, eliminar</string>
+
+    <string name="host_language" translatable="false">Idioma de la pantalla</string>
+    <string name="host_language_default" translatable="false">predeterminado</string>
+    <string name="host_language_pt" translatable="false">Português</string>
+    <string name="host_language_es" translatable="false">Español</string>
+    <string name="host_language_en" translatable="false">English</string>
+    <string name="host_show_messages" translatable="false">Mostrar los mensajes a los invitados</string>
+    <string name="host_show_messages_body" translatable="false">Activa «Ver grabaciones» en el menú. Si lo apagas, los mensajes se guardan pero no se ven en la tablet.</string>
+    <string name="host_show_mode" translatable="false">Modo Show</string>
+    <string name="host_show_mode_body" translatable="false">Cuando nadie usa la cabina, reproduce al azar mensajes guardados para animar a otros a participar.</string>
+    <string name="host_show_after" translatable="false">Empezar tras</string>
+    <string name="host_show_idle" translatable="false">sin actividad</string>
+    <string name="host_show_needs_messages" translatable="false">Necesita «Mostrar los mensajes a los invitados» activado.</string>
+    <string name="host_seconds" translatable="false">%1$d s</string>
+    <string name="host_minutes" translatable="false">%1$d min</string>
+
+    <string name="host_exit_title" translatable="false">Salir de la app</string>
+    <string name="host_exit_body" translatable="false">Quita la fijación y cierra la app. Para volver al kiosco, ábrela desde su icono.</string>
+    <string name="host_exit" translatable="false">Salir</string>
+    <string name="host_exit_confirm_title" translatable="false">¿Salir de la app?</string>
+    <string name="host_exit_confirm_body" translatable="false">Los invitados no podrán dejar mensajes hasta que la vuelvas a abrir.</string>
+    <string name="host_exit_keep" translatable="false">No, quedarme</string>
+    <string name="host_exit_confirm" translatable="false">Sí, salir</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.olinix.audioguest.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.olinix.audioguest.settings.Accent
 
 // Mockup palette (EstilosApp): warm charcoal background and gold accent.
 val Charcoal = Color(0xFF17120E)
@@ -34,3 +35,13 @@ val Scrim = Color(0xC717120E)
 
 /** Darkens the screen behind a dialog. */
 val DialogScrim = Color(0xC70C0907)
+
+// Host panel
+val FieldBackground = Color(0xFF0F0B08)
+val TabTrack = Color(0xFF1D1610)
+val TabSelected = Color(0xFF2A2017)
+val Muted = Color(0xFF9F8F7F)
+val SavedGreen = Color(0xFF9FC7A8)
+
+/** The host's accent as a Compose color. */
+val Accent.color: Color get() = Color(argb)

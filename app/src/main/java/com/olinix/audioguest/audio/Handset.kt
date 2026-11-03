@@ -34,6 +34,10 @@ object Handset {
     fun output(context: Context): AudioDeviceInfo? =
         audioManager(context).getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type in OUTPUT_TYPES }
 
+    /** The tablet's own speaker, for sound meant for the whole room rather than the handset. */
+    fun tabletSpeaker(context: Context): AudioDeviceInfo? =
+        audioManager(context).getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+
     /** Emits whether the handset is plugged in: once right away, then on every change. */
     fun connection(context: Context): Flow<Boolean> = callbackFlow {
         val audioManager = audioManager(context)

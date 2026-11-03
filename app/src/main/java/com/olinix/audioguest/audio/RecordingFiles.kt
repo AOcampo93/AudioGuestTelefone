@@ -12,6 +12,9 @@ class RecordingFiles(root: File) {
 
     private val directory = File(root, "recordings").apply { mkdirs() }
 
+    /** The host's welcome video. There is only ever one, kept apart from the guests' messages. */
+    val welcomeVideo: File = File(root, "welcome.mp4")
+
     fun newPending(mode: RecordingMode): File =
         File(directory, "$PENDING_PREFIX${prefix(mode)}-${System.currentTimeMillis()}.${extension(mode)}")
 
@@ -20,6 +23,15 @@ class RecordingFiles(root: File) {
         val kept = File(directory, pending.name.removePrefix(PENDING_PREFIX))
         if (!pending.renameTo(kept)) pending.copyTo(kept, overwrite = true).also { pending.delete() }
         return kept
+    }
+
+    /** Makes a just-recorded or just-copied video the welcome video, replacing the previous one. */
+    fun keepAsWelcome(pending: File) {
+        if (!pending.renameTo(welcomeVideo)) pending.copyTo(welcomeVideo, overwrite = true).also { pending.delete() }
+    }
+
+    fun deleteWelcome() {
+        welcomeVideo.delete()
     }
 
     fun fileFor(recording: Recording): File = File(directory, recording.fileName)

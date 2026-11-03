@@ -22,6 +22,12 @@ adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset f
 
 Guests cannot leave the app: it pins itself with Android's screen pinning, which the host confirms once when the app opens. If someone unpins it with the system gesture, the tablet locks. The host opens the panel by holding the top-right corner of the start screen for 3 seconds and typing the PIN (set in `SessionConfig`); from there "Salir de la app" unpins and closes it. While developing, add `--ez kiosk false` to skip the pinning.
 
+The panel has three sections, and every change is saved on the tablet at once (Jetpack DataStore):
+
+- **Evento**: the event type (wedding, Christmas, birthday, company or other), the names it asks for, the date and the accent color, with a live preview of the start screen.
+- **Bienvenida**: an optional welcome video of up to 30 seconds, recorded with the tablet or picked from its files, that plays before the menu.
+- **Invitados**: the language of the guest screens (Portuguese, Spanish or English), whether guests can see the saved messages, and show mode, which plays saved messages through the speaker while nobody uses the booth.
+
 # Useful Websites
 
 - [Kotlin documentation](https://kotlinlang.org/docs/home.html)
@@ -30,14 +36,15 @@ Guests cannot leave the app: it pins itself with Android's screen pinning, which
 - [Room persistence library](https://developer.android.com/training/data-storage/room)
 - [Media3 ExoPlayer](https://developer.android.com/media/media3/exoplayer)
 - [WLED JSON API](https://kno.wled.ge/interfaces/json-api/)
+- [DataStore](https://developer.android.com/topic/libraries/architecture/datastore)
+- [Per-app language preferences](https://developer.android.com/guide/topics/resources/app-languages)
 - [Lock task mode and screen pinning](https://developer.android.com/work/dpc/dedicated-devices/lock-task-mode)
 
 # Future Work
 
 - LED strip control through a WLED controller (`WledLightController`)
 - Background upload to a server and a QR code / email link for each guest
-- Host settings in the panel: event details, welcome video and guest options, as in the mockups
 - Full kiosk mode as Device Owner on a tablet dedicated to events (starts on boot, no unpin gesture)
-- Portuguese and English UI translations
+- Changing the host PIN from the panel
 
 Fonts: Cormorant Garamond and DM Sans, licensed under the SIL Open Font License (see `licenses/`).
