@@ -54,7 +54,6 @@ import com.olinix.audioguest.session.WelcomeProblem
 import com.olinix.audioguest.session.WelcomeVideo
 import com.olinix.audioguest.settings.EventType
 import com.olinix.audioguest.settings.HostSettings
-import com.olinix.audioguest.ui.components.ConfirmDialog
 import com.olinix.audioguest.ui.components.PillButton
 import com.olinix.audioguest.ui.components.PillStyle
 import com.olinix.audioguest.ui.theme.Ivory
@@ -70,6 +69,7 @@ import kotlinx.coroutines.withContext
 /**
  * "Video de bienvenida": an optional greeting guests see after tapping the invitation.
  * The host records it with the tablet or picks a file of up to [maxSeconds].
+ * [onDelete] asks the panel to confirm before the video is deleted.
  */
 @Composable
 fun WelcomeSection(
@@ -84,7 +84,6 @@ fun WelcomeSection(
     onPlayingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var confirmingDelete by remember { mutableStateOf(false) }
     val pickVideo = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onImport) }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -130,7 +129,7 @@ fun WelcomeSection(
                             .fillMaxWidth()
                             .height(60.dp)
                             .clip(RoundedCornerShape(percent = 50))
-                            .clickable { confirmingDelete = true },
+                            .clickable(onClick = onDelete),
                         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -154,21 +153,6 @@ fun WelcomeSection(
         }
 
         IdeaNote(settings.type)
-    }
-
-    if (confirmingDelete) {
-        ConfirmDialog(
-            icon = R.drawable.ic_trash,
-            title = stringResource(R.string.host_welcome_delete_title),
-            body = stringResource(R.string.host_welcome_delete_body),
-            keepText = stringResource(R.string.host_welcome_delete_keep),
-            confirmText = stringResource(R.string.host_welcome_delete_confirm),
-            onKeep = { confirmingDelete = false },
-            onConfirm = {
-                confirmingDelete = false
-                onDelete()
-            },
-        )
     }
 }
 

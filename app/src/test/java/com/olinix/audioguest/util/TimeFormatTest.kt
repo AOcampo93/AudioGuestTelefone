@@ -24,4 +24,9 @@ class TimeFormatTest {
         assertEquals("21:42", formatClockTime(1_813_009_320_000, ZoneId.of("UTC")))
         assertEquals("09:05", formatClockTime(1_812_963_900_000, ZoneId.of("UTC")))
     }
+
+    @Test
+    fun thePanelListsTheDayInSpanish() {
+        assertEquals("14 jun · 21:42", formatDayAndTime(1_813_009_320_000, ZoneId.of("UTC")))
+    }
 }

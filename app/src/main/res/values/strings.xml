@@ -128,6 +128,7 @@
     <string name="host_tab_event" translatable="false">Evento</string>
     <string name="host_tab_welcome" translatable="false">Bienvenida</string>
     <string name="host_tab_guests" translatable="false">Invitados</string>
+    <string name="host_tab_messages" translatable="false">Mensajes</string>
     <string name="host_event_title" translatable="false">Evento</string>
     <string name="host_event_body" translatable="false">Tipo de evento, nombres, fecha y color.</string>
     <string name="host_welcome_title" translatable="false">Video de bienvenida</string>
@@ -189,8 +190,8 @@
     <string name="host_welcome_idea_other" translatable="false">Los anfitriones invitando a dejar un mensaje.</string>
     <string name="host_welcome_delete_title" translatable="false">¿Eliminar el video de bienvenida?</string>
     <string name="host_welcome_delete_body" translatable="false">Los invitados pasarán directo al menú.</string>
-    <string name="host_welcome_delete_keep" translatable="false">No, conservar</string>
-    <string name="host_welcome_delete_confirm" translatable="false">Sí, eliminar</string>
+    <string name="host_delete_keep" translatable="false">No, conservar</string>
+    <string name="host_delete_confirm" translatable="false">Sí, eliminar</string>
 
     <string name="host_language" translatable="false">Idioma de la pantalla</string>
     <string name="host_language_default" translatable="false">predeterminado</string>
@@ -211,6 +212,25 @@
     <string name="host_show_needs_messages" translatable="false">Necesita «Mostrar los mensajes a los invitados» activado.</string>
     <string name="host_seconds" translatable="false">%1$d s</string>
     <string name="host_minutes" translatable="false">%1$d min</string>
+
+    <string name="host_messages_title" translatable="false">Mensajes</string>
+    <string name="host_messages_body" translatable="false">Todo lo que los invitados guardaron en la tablet.</string>
+    <plurals name="host_messages_total" translatable="false">
+        <item quantity="one">%1$d mensaje</item>
+        <item quantity="other">%1$d mensajes</item>
+    </plurals>
+    <string name="host_messages_split" translatable="false">%1$d de video · %2$d de voz</string>
+    <string name="host_messages_hint" translatable="false">Toca uno para reproducirlo por el altavoz.</string>
+    <string name="host_messages_empty" translatable="false">Todavía no hay mensajes guardados.</string>
+    <string name="host_messages_voice" translatable="false">Mensaje de voz</string>
+    <string name="host_messages_video" translatable="false">Mensaje de video</string>
+    <string name="host_messages_hidden" translatable="false">Oculto a los invitados</string>
+    <string name="host_messages_play" translatable="false">Reproducir</string>
+    <string name="host_messages_pause" translatable="false">Pausar</string>
+    <string name="host_messages_delete" translatable="false">Eliminar</string>
+    <string name="host_messages_close" translatable="false">Cerrar</string>
+    <string name="host_messages_delete_title" translatable="false">¿Eliminar este mensaje?</string>
+    <string name="host_messages_delete_body" translatable="false">Se borrará de la tablet y no podrás recuperarlo.</string>
 
     <string name="host_exit_title" translatable="false">Salir de la app</string>
     <string name="host_exit_body" translatable="false">Quita la fijación y cierra la app. Para volver al kiosco, ábrela desde su icono.</string>

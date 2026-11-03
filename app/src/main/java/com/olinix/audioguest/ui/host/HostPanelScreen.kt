@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -36,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.HostSection
 import com.olinix.audioguest.session.SessionState
@@ -55,10 +58,11 @@ import com.olinix.audioguest.ui.theme.SurfaceDeep
 import com.olinix.audioguest.ui.theme.TabSelected
 import com.olinix.audioguest.ui.theme.TabTrack
 import com.olinix.audioguest.ui.theme.Taupe
+import java.io.File
 
 /**
- * Host panel: Evento, Bienvenida and Invitados, as in the mockup. Every change is saved at
- * once. At the bottom, "Salir de la app" lets the host close the kiosk.
+ * Host panel: Evento, Bienvenida, Invitados and Mensajes. Every change is saved at once.
+ * At the bottom, "Salir de la app" lets the host close the kiosk.
  */
 @Composable
 fun HostPanelScreen(
@@ -70,55 +74,112 @@ fun HostPanelScreen(
     onClose: () -> Unit,
     onExitApp: () -> Unit,
     welcome: WelcomeActions,
+    messages: MessageActions,
     modifier: Modifier = Modifier,
 ) {
-    var confirmingExit by remember { mutableStateOf(false) }
+    // Drawn above the whole panel rather than inside the scrolling section that opened it.
+    var overlay by remember { mutableStateOf<PanelOverlay?>(null) }
+    val padding = PaddingValues(start = 48.dp, end = 48.dp, top = 36.dp, bottom = 40.dp)
+    val exitCard = @Composable { ExitCard(onExit = { overlay = PanelOverlay.Exit }, modifier = Modifier.padding(top = 48.dp)) }
 
     Box(modifier.fillMaxSize().background(Charcoal)) {
         Column(Modifier.fillMaxSize()) {
             Header(event = event, section = state.section, onSection = onSection, onClose = onClose)
-            Column(
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    // The keyboard pushes the fields up instead of covering them.
-                    .imePadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 48.dp, end = 48.dp, top = 36.dp, bottom = 40.dp),
-            ) {
-                SectionHeading(state.section)
-                when (state.section) {
-                    HostSection.EVENT -> EventSection(settings, event, onChange, Modifier.padding(top = 32.dp))
-                    HostSection.WELCOME -> WelcomeSection(
+            if (state.section == HostSection.MESSAGES) {
+                LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    item { SectionHeading(state.section) }
+                    messageItems(
+                        messages = messages,
                         settings = settings,
-                        welcome = welcome.video,
-                        problem = welcome.problem,
-                        maxSeconds = welcome.maxSeconds,
-                        onChange = onChange,
-                        onRecord = welcome.onRecord,
-                        onImport = welcome.onImport,
-                        onDelete = welcome.onDelete,
-                        onPlayingChange = welcome.onPlayingChange,
-                        modifier = Modifier.padding(top = 40.dp),
+                        onPlay = { overlay = PanelOverlay.PlayMessage(it) },
+                        onDelete = { overlay = PanelOverlay.DeleteMessage(it) },
                     )
-                    HostSection.GUESTS -> GuestsSection(settings, onChange, Modifier.padding(top = 36.dp))
+                    item { exitCard() }
                 }
-                ExitCard(onExit = { confirmingExit = true }, modifier = Modifier.padding(top = 48.dp))
+            } else {
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        // The keyboard pushes the fields up instead of covering them.
+                        .imePadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(padding),
+                ) {
+                    SectionHeading(state.section)
+                    when (state.section) {
+                        HostSection.EVENT -> EventSection(settings, event, onChange, Modifier.padding(top = 32.dp))
+                        HostSection.WELCOME -> WelcomeSection(
+                            settings = settings,
+                            welcome = welcome.video,
+                            problem = welcome.problem,
+                            maxSeconds = welcome.maxSeconds,
+                            onChange = onChange,
+                            onRecord = welcome.onRecord,
+                            onImport = welcome.onImport,
+                            onDelete = { overlay = PanelOverlay.DeleteWelcome },
+                            onPlayingChange = welcome.onPlayingChange,
+                            modifier = Modifier.padding(top = 40.dp),
+                        )
+                        HostSection.GUESTS -> GuestsSection(settings, onChange, Modifier.padding(top = 36.dp))
+                        HostSection.MESSAGES -> Unit
+                    }
+                    exitCard()
+                }
             }
         }
 
-        if (confirmingExit) {
-            ConfirmDialog(
+        when (val shown = overlay) {
+            null -> Unit
+            PanelOverlay.Exit -> ConfirmDialog(
                 icon = R.drawable.ic_exit,
                 title = stringResource(R.string.host_exit_confirm_title),
                 body = stringResource(R.string.host_exit_confirm_body),
                 keepText = stringResource(R.string.host_exit_keep),
                 confirmText = stringResource(R.string.host_exit_confirm),
-                onKeep = { confirmingExit = false },
+                onKeep = { overlay = null },
                 onConfirm = onExitApp,
+            )
+            PanelOverlay.DeleteWelcome -> ConfirmDialog(
+                icon = R.drawable.ic_trash,
+                title = stringResource(R.string.host_welcome_delete_title),
+                body = stringResource(R.string.host_welcome_delete_body),
+                keepText = stringResource(R.string.host_delete_keep),
+                confirmText = stringResource(R.string.host_delete_confirm),
+                onKeep = { overlay = null },
+                onConfirm = {
+                    overlay = null
+                    welcome.onDelete()
+                },
+            )
+            is PanelOverlay.DeleteMessage -> ConfirmDialog(
+                icon = R.drawable.ic_trash,
+                title = stringResource(R.string.host_messages_delete_title),
+                body = stringResource(R.string.host_messages_delete_body),
+                keepText = stringResource(R.string.host_delete_keep),
+                confirmText = stringResource(R.string.host_delete_confirm),
+                onKeep = { overlay = null },
+                onConfirm = {
+                    overlay = null
+                    messages.onDelete(shown.recording.id)
+                },
+            )
+            is PanelOverlay.PlayMessage -> MessagePlayerOverlay(
+                recording = shown.recording,
+                file = messages.fileOf(shown.recording),
+                onClose = { overlay = null },
+                onPlayingChange = welcome.onPlayingChange,
             )
         }
     }
+}
+
+/** What can cover the panel: a confirmation, or a message playing. */
+private sealed interface PanelOverlay {
+    data object Exit : PanelOverlay
+    data object DeleteWelcome : PanelOverlay
+    data class DeleteMessage(val recording: Recording) : PanelOverlay
+    data class PlayMessage(val recording: Recording) : PanelOverlay
 }
 
 /** What the "Bienvenida" section shows and can do, bundled so the panel's signature stays short. */
@@ -211,6 +272,7 @@ private fun SectionHeading(section: HostSection) {
         HostSection.EVENT -> R.string.host_event_title to R.string.host_event_body
         HostSection.WELCOME -> R.string.host_welcome_title to R.string.host_welcome_body
         HostSection.GUESTS -> R.string.host_guests_title to R.string.host_guests_body
+        HostSection.MESSAGES -> R.string.host_messages_title to R.string.host_messages_body
     }
     Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(Modifier.weight(1f)) {
@@ -256,6 +318,7 @@ private val HostSection.icon: Int
         HostSection.EVENT -> R.drawable.ic_calendar
         HostSection.WELCOME -> R.drawable.ic_video
         HostSection.GUESTS -> R.drawable.ic_guests
+        HostSection.MESSAGES -> R.drawable.ic_gallery
     }
 
 private val HostSection.tabLabel: Int
@@ -263,6 +326,7 @@ private val HostSection.tabLabel: Int
         HostSection.EVENT -> R.string.host_tab_event
         HostSection.WELCOME -> R.string.host_tab_welcome
         HostSection.GUESTS -> R.string.host_tab_guests
+        HostSection.MESSAGES -> R.string.host_tab_messages
     }
 
 @Preview(widthDp = 800, heightDp = 1280)
@@ -278,6 +342,7 @@ private fun HostPanelPreview() {
             onClose = {},
             onExitApp = {},
             welcome = WelcomeActions(null, null, 30, {}, {}, {}, {}),
+            messages = MessageActions(emptyList(), { File("") }, {}),
         )
     }
 }

@@ -12,6 +12,9 @@ interface RecordingRepository {
 
     /** Registers a file that was just kept. */
     suspend fun add(mode: RecordingMode, file: File, durationSeconds: Int)
+
+    /** Forgets a message. Its file is deleted separately. */
+    suspend fun delete(recording: Recording)
 }
 
 class LocalRecordingRepository(
@@ -23,5 +26,9 @@ class LocalRecordingRepository(
 
     override suspend fun add(mode: RecordingMode, file: File, durationSeconds: Int) {
         dao.insert(Recording(mode = mode, fileName = file.name, durationSeconds = durationSeconds, savedAt = now()))
+    }
+
+    override suspend fun delete(recording: Recording) {
+        dao.delete(recording)
     }
 }

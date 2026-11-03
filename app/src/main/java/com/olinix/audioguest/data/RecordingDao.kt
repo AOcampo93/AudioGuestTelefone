@@ -1,6 +1,7 @@
 package com.olinix.audioguest.data
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
@@ -14,4 +15,7 @@ interface RecordingDao {
 
     @Insert
     suspend fun insert(recording: Recording): Long
+
+    @Delete
+    suspend fun delete(recording: Recording)
 }

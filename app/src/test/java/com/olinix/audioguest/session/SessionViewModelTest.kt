@@ -592,6 +592,28 @@ class SessionViewModelTest {
         viewModel.back()
     }
 
+    @Test
+    fun onlyTheHostDeletesMessages() = runTest(dispatcher) {
+        startRecording(RecordingMode.AUDIO)
+        finish()
+        viewModel.save()
+        waitSeconds(5)
+        val saved = viewModel.recordings.value.single()
+        assertTrue(viewModel.fileOf(saved).exists())
+
+        // Guests have no way to delete; outside the panel the call does nothing.
+        viewModel.deleteRecording(saved.id)
+        runCurrent()
+        assertEquals(1, viewModel.recordings.value.size)
+
+        openHostPanel()
+        viewModel.showHostSection(HostSection.MESSAGES)
+        viewModel.deleteRecording(saved.id)
+        runCurrent()
+        assertTrue(viewModel.recordings.value.isEmpty())
+        assertFalse(viewModel.fileOf(saved).exists())
+    }
+
     private fun TestScope.startRecording(mode: RecordingMode) {
         viewModel.start()
         viewModel.chooseMode(mode)
@@ -631,6 +653,10 @@ class SessionViewModelTest {
         override suspend fun add(mode: RecordingMode, file: File, durationSeconds: Int) {
             val id = saved.value.size + 1L
             saved.value = listOf(Recording(id, mode, file.name, durationSeconds, savedAt = id)) + saved.value
+        }
+
+        override suspend fun delete(recording: Recording) {
+            saved.value = saved.value.filterNot { it.id == recording.id }
         }
     }
 

@@ -38,6 +38,7 @@ import com.olinix.audioguest.ui.handset.ConnectHandsetOverlay
 import com.olinix.audioguest.ui.host.HostCorner
 import com.olinix.audioguest.ui.host.HostLoginScreen
 import com.olinix.audioguest.ui.host.HostPanelScreen
+import com.olinix.audioguest.ui.host.MessageActions
 import com.olinix.audioguest.ui.host.WelcomeActions
 import com.olinix.audioguest.ui.idle.IdleScreen
 import com.olinix.audioguest.ui.menu.MenuScreen
@@ -202,6 +203,11 @@ fun AudioGuestApp(
                         onImport = { uri -> viewModel.importWelcome { target -> copyVideo(context, uri, target) } },
                         onDelete = viewModel::deleteWelcome,
                         onPlayingChange = viewModel::onPlaybackChanged,
+                    ),
+                    messages = MessageActions(
+                        recordings = recordings,
+                        fileOf = viewModel::fileOf,
+                        onDelete = viewModel::deleteRecording,
                     ),
                 )
             }

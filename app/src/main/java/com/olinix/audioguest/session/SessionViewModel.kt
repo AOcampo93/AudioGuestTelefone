@@ -312,6 +312,17 @@ class SessionViewModel(
         changeSettings { it.copy(welcomeVideo = false) }
     }
 
+    /** "Eliminar" in the panel's list of messages, once the host confirmed. Its file goes too. */
+    fun deleteRecording(recordingId: Long) {
+        if (_state.value !is SessionState.HostPanel) return
+        val recording = recordings.value.firstOrNull { it.id == recordingId } ?: return
+        viewModelScope.launch {
+            repository.delete(recording)
+            files.discard(files.fileFor(recording))
+        }
+        restartInactivityTimer()
+    }
+
     /** Live microphone loudness (0..1) for the recording wave. */
     fun inputLevel(): Float {
         val capturing = _state.value as? SessionState.Capturing ?: return 0f
