@@ -15,11 +15,9 @@ fun formatDuration(totalSeconds: Int): String {
 fun formatClockTime(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
     Instant.ofEpochMilli(epochMillis).atZone(zone).format(CLOCK_TIME)
 
-/** Day and time a message was saved, as the host panel lists them (3 nov · 21:42). Always Spanish, like the panel. */
-fun formatDayAndTime(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
-    Instant.ofEpochMilli(epochMillis).atZone(zone).format(DAY_AND_TIME).replace(".", "")
+/** Day and time a message was saved, as the host panel lists them (3 nov · 21:42), with the month in [locale]'s language. */
+fun formatDayAndTime(epochMillis: Long, locale: Locale, zone: ZoneId = ZoneId.systemDefault()): String =
+    // Spanish and Portuguese abbreviate months with a dot ("nov."), which the panel leaves out.
+    Instant.ofEpochMilli(epochMillis).atZone(zone).format(DateTimeFormatter.ofPattern("d MMM · HH:mm", locale)).replace(".", "")
 
 private val CLOCK_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-
-// Spanish abbreviates months with a dot ("nov."), which the panel leaves out.
-private val DAY_AND_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.forLanguageTag("es"))

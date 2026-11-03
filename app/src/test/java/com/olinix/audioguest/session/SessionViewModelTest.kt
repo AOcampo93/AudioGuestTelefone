@@ -748,17 +748,29 @@ class SessionViewModelTest {
     }
 
     @Test
-    fun theHostCanTestTheCallWithCallModeOff() = runTest(dispatcher) {
+    fun theHostTestsTheCallOnceThereIsAQuestion() = runTest(dispatcher) {
         openHostPanel()
+        viewModel.showHostSection(HostSection.CALL)
+        // A call always starts with the question, so without it there is nothing to test.
+        viewModel.testCall()
+        assertEquals(SessionState.HostPanel(HostSection.CALL), viewModel.state.value)
+
+        viewModel.importHostVideo(HostVideo.CALL) { target -> target.writeText("question"); 20 }
+        runCurrent()
+        viewModel.updateSettings { it.copy(callMode = false, callAnswer = RecordingMode.VIDEO) }
         viewModel.testCall()
         assertEquals(SessionState.Idle, viewModel.state.value)
         waitSeconds(3)
         assertEquals(SessionState.Ringing, viewModel.state.value)
 
-        // Without a question video, answering goes straight to recording.
+        // Answering plays the question, and right after it the answer is recorded on video.
         viewModel.answer()
+        assertEquals(SessionState.CallIntro, viewModel.state.value)
+        viewModel.finishCallIntro()
         runCurrent()
-        assertEquals(SessionState.Countdown(RecordingMode.AUDIO, 3), viewModel.state.value)
+        assertEquals(SessionState.Countdown(RecordingMode.VIDEO, 3), viewModel.state.value)
+        assertTrue(video.isPrepared)
+        assertEquals(Microphone.HANDSET, video.microphone)
     }
 
     /** Call mode on with a question video, and a booth whose calls come at the earliest moment allowed. */

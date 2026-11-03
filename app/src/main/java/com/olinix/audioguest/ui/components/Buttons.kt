@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -46,6 +47,8 @@ fun PillButton(
     leading: (@Composable RowScope.() -> Unit)? = null,
     contentColor: Color? = null,
     borderColor: Color = Ivory.copy(alpha = 0.35f),
+    /** Off, the pill is faded and ignores taps. */
+    enabled: Boolean = true,
 ) {
     val shape = RoundedCornerShape(percent = 50)
     val (background, foreground) = when (style) {
@@ -61,11 +64,12 @@ fun PillButton(
 
     Row(
         modifier = modifier
+            .alpha(if (enabled) 1f else 0.4f)
             .height(height)
             .clip(shape)
             .background(background)
             .then(border)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 32.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,

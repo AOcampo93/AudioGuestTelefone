@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -143,7 +144,7 @@ private fun MessageRow(recording: Recording, file: File, hidden: Boolean, onPlay
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text = "${formatDayAndTime(recording.savedAt)} · ${formatDuration(recording.durationSeconds)}",
+                text = "${formatDayAndTime(recording.savedAt, LocalConfiguration.current.locales[0])} · ${formatDuration(recording.durationSeconds)}",
                 fontSize = 20.sp,
                 color = Sand,
                 style = MaterialTheme.typography.bodyMedium,
@@ -199,7 +200,12 @@ fun MessagePlayerOverlay(recording: Recording, file: File, onClose: () -> Unit, 
                         color = Ivory,
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    Text(formatDayAndTime(recording.savedAt), fontSize = 20.sp, color = Sand, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        formatDayAndTime(recording.savedAt, LocalConfiguration.current.locales[0]),
+                        fontSize = 20.sp,
+                        color = Sand,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
                 PillButton(
                     text = stringResource(R.string.host_messages_close),

@@ -140,17 +140,17 @@ class SessionViewModel(
         moveTo(if (welcome) SessionState.Welcome else SessionState.Menu)
     }
 
-    /** "Contestar", a tap anywhere or the handset button while the booth rings. */
+    /** "Contestar", a tap anywhere or the handset button while the booth rings: the host's question plays first. */
     fun answer() {
         if (_state.value != SessionState.Ringing) return
         timerJob?.cancel()
         _microphone.value = Microphone.HANDSET
         _playerSound.value = SoundOutput.HANDSET
         scheduleCall()
-        if (HostVideo.CALL in _hostVideos.value) moveTo(SessionState.CallIntro) else startCountdown(_settings.value.callAnswerMode)
+        moveTo(SessionState.CallIntro)
     }
 
-    /** The question ended, or the guest skipped it: their answer is recorded next. */
+    /** The question ended, or the guest skipped it: their answer is recorded right away, with no menu. */
     fun finishCallIntro() {
         if (_state.value == SessionState.CallIntro) startCountdown(_settings.value.callAnswerMode)
     }
@@ -372,9 +372,9 @@ class SessionViewModel(
         changeSettings { it.withHostVideo(kind, on = false) }
     }
 
-    /** "Probar llamada": the panel closes and the booth rings a moment later, even with call mode off. */
+    /** "Probar llamada": the panel closes and the booth rings a moment later, even with call mode off. It needs the question. */
     fun testCall() {
-        if (_state.value !is SessionState.HostPanel) return
+        if (_state.value !is SessionState.HostPanel || HostVideo.CALL !in _hostVideos.value) return
         moveTo(SessionState.Idle)
         callJob?.cancel()
         callJob = viewModelScope.launch {

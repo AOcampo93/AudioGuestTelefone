@@ -24,7 +24,7 @@ import com.olinix.audioguest.ui.theme.Taupe
 
 /**
  * "Modo llamada": now and then the booth rings; whoever answers sees the host's question and
- * records their answer. The switch needs the question video first.
+ * records their answer. The switch and "Probar llamada" need the question video first.
  */
 @Composable
 fun CallSection(
@@ -90,9 +90,19 @@ fun CallSection(
             }
         }
 
+        // A call always starts with the question, so there is nothing to try without it.
         PanelCard {
-            PanelCardRow(title = stringResource(R.string.host_call_test), body = stringResource(R.string.host_call_test_body)) {
-                PillButton(text = stringResource(R.string.host_call_test_button), onClick = onTestCall, icon = R.drawable.ic_phone, height = 72.dp)
+            PanelCardRow(
+                title = stringResource(R.string.host_call_test),
+                body = stringResource(if (hasQuestion) R.string.host_call_test_body else R.string.host_call_needs_video),
+            ) {
+                PillButton(
+                    text = stringResource(R.string.host_call_test_button),
+                    onClick = onTestCall,
+                    icon = R.drawable.ic_phone,
+                    height = 72.dp,
+                    enabled = hasQuestion,
+                )
             }
         }
 

@@ -183,7 +183,7 @@ private sealed interface PanelOverlay {
     data class PlayMessage(val recording: Recording) : PanelOverlay
 }
 
-/** "📞 Panel del anfitrión · Ana & Miguel", "Cerrar y volver" and the three section tabs. */
+/** "📞 Panel del anfitrión · Ana & Miguel", "Cerrar y volver" and the section tabs. */
 @Composable
 private fun Header(event: EventInfo, section: HostSection, onSection: (HostSection) -> Unit, onClose: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary

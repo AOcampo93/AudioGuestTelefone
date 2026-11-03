@@ -41,9 +41,10 @@ class Ringer(private val context: Context) {
                 .setTransferMode(AudioTrack.MODE_STATIC)
                 .setBufferSizeInBytes(samples.size * Short.SIZE_BYTES)
                 .build()
+            // Chosen before the sound is loaded: changing the device later makes Android rebuild the track.
+            Handset.tabletSpeaker(context)?.let(audioTrack::setPreferredDevice)
             audioTrack.write(samples, 0, samples.size)
             audioTrack.setLoopPoints(0, samples.size, -1)
-            Handset.tabletSpeaker(context)?.let(audioTrack::setPreferredDevice)
             audioTrack.play()
             track = audioTrack
         } catch (e: RuntimeException) {

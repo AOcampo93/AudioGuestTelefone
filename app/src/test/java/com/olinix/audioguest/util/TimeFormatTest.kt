@@ -3,6 +3,7 @@ package com.olinix.audioguest.util
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.ZoneId
+import java.util.Locale
 
 class TimeFormatTest {
 
@@ -26,7 +27,9 @@ class TimeFormatTest {
     }
 
     @Test
-    fun thePanelListsTheDayInSpanish() {
-        assertEquals("14 jun · 21:42", formatDayAndTime(1_813_009_320_000, ZoneId.of("UTC")))
+    fun thePanelListsTheDayInTheScreenLanguage() {
+        assertEquals("14 jun · 21:42", formatDayAndTime(1_813_009_320_000, Locale.forLanguageTag("es"), ZoneId.of("UTC")))
+        assertEquals("14 jun · 21:42", formatDayAndTime(1_813_009_320_000, Locale.forLanguageTag("pt"), ZoneId.of("UTC")))
+        assertEquals("14 Jun · 21:42", formatDayAndTime(1_813_009_320_000, Locale.ENGLISH, ZoneId.of("UTC")))
     }
 }
