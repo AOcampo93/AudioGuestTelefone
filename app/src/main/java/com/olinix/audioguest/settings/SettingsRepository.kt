@@ -55,6 +55,9 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
             prefs[ALLOW_SHARING] = settings.allowSharing
             prefs[SHOW_MODE] = settings.showMode
             prefs[SHOW_AFTER] = settings.showAfterSeconds
+            prefs[CALL_MODE] = settings.callMode
+            prefs[CALL_EVERY] = settings.callEveryMinutes
+            prefs[CALL_ANSWER] = settings.callAnswer.name
         }
     }
 
@@ -83,6 +86,9 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
             allowSharing = this[ALLOW_SHARING] ?: defaults.allowSharing,
             showMode = this[SHOW_MODE] ?: defaults.showMode,
             showAfterSeconds = this[SHOW_AFTER] ?: defaults.showAfterSeconds,
+            callMode = this[CALL_MODE] ?: defaults.callMode,
+            callEveryMinutes = this[CALL_EVERY] ?: defaults.callEveryMinutes,
+            callAnswer = enumOr(this[CALL_ANSWER], defaults.callAnswer),
         )
     }
 
@@ -110,5 +116,8 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
         val ALLOW_SHARING = booleanPreferencesKey("allow_sharing")
         val SHOW_MODE = booleanPreferencesKey("show_mode")
         val SHOW_AFTER = intPreferencesKey("show_after")
+        val CALL_MODE = booleanPreferencesKey("call_mode")
+        val CALL_EVERY = intPreferencesKey("call_every")
+        val CALL_ANSWER = stringPreferencesKey("call_answer")
     }
 }

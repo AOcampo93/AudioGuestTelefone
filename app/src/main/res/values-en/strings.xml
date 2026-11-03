@@ -70,6 +70,12 @@
     <string name="welcome_skip">Skip</string>
     <string name="show_chip">Messages from guests</string>
     <string name="show_cta">Tap and leave yours</string>
+    <string name="call_incoming">Incoming call</string>
+    <string name="call_title">You have a call</string>
+    <string name="call_body">Pick up the handset and tap to answer</string>
+    <string name="call_answer">Answer</string>
+    <string name="call_question_chip">A question for you</string>
+    <string name="call_answer_now">Answer now</string>
     <string name="event_label_wedding">The wedding of</string>
     <string name="event_label_christmas">Christmas with</string>
     <string name="event_label_birthday">Birthday of</string>

@@ -3,6 +3,7 @@ package com.olinix.audioguest.ui.host
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,8 +51,8 @@ import com.olinix.audioguest.audio.VideoFrame
 import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.audio.rememberVideoFrame
 import com.olinix.audioguest.audio.videoSeconds
-import com.olinix.audioguest.session.WelcomeProblem
-import com.olinix.audioguest.session.WelcomeVideo
+import com.olinix.audioguest.session.HostVideoFile
+import com.olinix.audioguest.session.VideoProblem
 import com.olinix.audioguest.settings.EventType
 import com.olinix.audioguest.settings.HostSettings
 import com.olinix.audioguest.ui.components.PillButton
@@ -66,26 +67,31 @@ import com.olinix.audioguest.util.formatDuration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** What a section built around one of the host's videos shows and can do, bundled so signatures stay short. */
+class HostVideoActions(
+    val video: HostVideoFile?,
+    val problem: VideoProblem?,
+    val maxSeconds: Int,
+    val onRecord: () -> Unit,
+    val onImport: (Uri) -> Unit,
+    val onDelete: () -> Unit,
+    val onPlayingChange: (Boolean) -> Unit,
+) {
+    /** The same actions, except that "Eliminar video" calls [ask], so the panel can confirm first. */
+    fun confirmingDelete(ask: () -> Unit) = HostVideoActions(video, problem, maxSeconds, onRecord, onImport, ask, onPlayingChange)
+}
+
 /**
  * "Video de bienvenida": an optional greeting guests see after tapping the invitation.
- * The host records it with the tablet or picks a file of up to [maxSeconds].
- * [onDelete] asks the panel to confirm before the video is deleted.
+ * The host records it with the tablet or picks a file of up to [HostVideoActions.maxSeconds].
  */
 @Composable
 fun WelcomeSection(
     settings: HostSettings,
-    welcome: WelcomeVideo?,
-    problem: WelcomeProblem?,
-    maxSeconds: Int,
+    welcome: HostVideoActions,
     onChange: ((HostSettings) -> HostSettings) -> Unit,
-    onRecord: () -> Unit,
-    onImport: (Uri) -> Unit,
-    onDelete: () -> Unit,
-    onPlayingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val pickVideo = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onImport) }
-
     Column(modifier, verticalArrangement = Arrangement.spacedBy(24.dp)) {
         PanelCard {
             PanelCardRow(title = stringResource(R.string.host_welcome_show), body = stringResource(R.string.host_welcome_show_body)) {
@@ -100,96 +106,107 @@ fun WelcomeSection(
         }
 
         // Dimmed while switched off, but still usable, so the host can prepare it first.
-        Row(
+        HostVideoEditor(
+            actions = welcome,
+            emptyText = stringResource(R.string.host_welcome_none),
             modifier = Modifier.alpha(if (settings.welcomeVideo) 1f else 0.4f),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            WelcomePreview(welcome, onPlayingChange)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                PillButton(
-                    text = stringResource(R.string.host_welcome_record),
-                    onClick = onRecord,
-                    icon = R.drawable.ic_video,
-                    height = 72.dp,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                PillButton(
-                    text = stringResource(R.string.host_welcome_pick),
-                    onClick = { pickVideo.launch(arrayOf("video/*")) },
-                    style = PillStyle.OUTLINE,
-                    icon = R.drawable.ic_upload,
-                    height = 72.dp,
-                    borderColor = Ivory.copy(alpha = 0.3f),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (welcome != null) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                            .clip(RoundedCornerShape(percent = 50))
-                            .clickable(onClick = onDelete),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(painterResource(R.drawable.ic_trash), contentDescription = null, tint = Sand, modifier = Modifier.size(22.dp))
-                        Text(stringResource(R.string.host_welcome_delete), fontSize = 20.sp, color = Sand, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-                if (problem != null) {
-                    Text(
-                        text = when (problem) {
-                            WelcomeProblem.TOO_LONG -> stringResource(R.string.host_welcome_too_long, maxSeconds)
-                            WelcomeProblem.UNREADABLE -> stringResource(R.string.host_welcome_unreadable)
-                        },
-                        fontSize = 20.sp,
-                        lineHeight = 28.sp,
-                        color = RecordRedLight,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-        }
+        )
 
-        IdeaNote(settings.type)
+        IdeaNote(stringResource(welcomeIdea(settings.type)))
     }
 }
 
-/** 300 × 400 frame of the welcome video with its length. A tap plays it right there. */
+/** The video's frame on the left; record, pick and delete on the right, with the reason a picked video was refused. */
 @Composable
-private fun WelcomePreview(welcome: WelcomeVideo?, onPlayingChange: (Boolean) -> Unit) {
+fun HostVideoEditor(actions: HostVideoActions, emptyText: String, modifier: Modifier = Modifier) {
+    val pickVideo = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(actions.onImport) }
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(28.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HostVideoPreview(actions.video, emptyText, actions.onPlayingChange)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            PillButton(
+                text = stringResource(R.string.host_video_record),
+                onClick = actions.onRecord,
+                icon = R.drawable.ic_video,
+                height = 72.dp,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            PillButton(
+                text = stringResource(R.string.host_video_pick),
+                onClick = { pickVideo.launch(arrayOf("video/*")) },
+                style = PillStyle.OUTLINE,
+                icon = R.drawable.ic_upload,
+                height = 72.dp,
+                borderColor = Ivory.copy(alpha = 0.3f),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (actions.video != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .clickable(onClick = actions.onDelete),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(painterResource(R.drawable.ic_trash), contentDescription = null, tint = Sand, modifier = Modifier.size(22.dp))
+                    Text(stringResource(R.string.host_video_delete), fontSize = 20.sp, color = Sand, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            if (actions.problem != null) {
+                Text(
+                    text = when (actions.problem) {
+                        VideoProblem.TOO_LONG -> stringResource(R.string.host_video_too_long, actions.maxSeconds)
+                        VideoProblem.UNREADABLE -> stringResource(R.string.host_video_unreadable)
+                    },
+                    fontSize = 20.sp,
+                    lineHeight = 28.sp,
+                    color = RecordRedLight,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    }
+}
+
+/** 300 × 400 frame of the video with its length. A tap plays it right there. */
+@Composable
+private fun HostVideoPreview(video: HostVideoFile?, emptyText: String, onPlayingChange: (Boolean) -> Unit) {
     val shape = RoundedCornerShape(20.dp)
     Box(
         modifier = Modifier.size(width = 300.dp, height = 400.dp).clip(shape).background(SurfaceRaised),
         contentAlignment = Alignment.Center,
     ) {
-        if (welcome == null) {
+        if (video == null) {
             Box(Modifier.fillMaxSize().dashedBorder(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Icon(painterResource(R.drawable.ic_video), contentDescription = null, tint = Sand, modifier = Modifier.size(44.dp))
-                    Text(stringResource(R.string.host_welcome_none), fontSize = 20.sp, color = Sand, style = MaterialTheme.typography.bodyMedium)
+                    Text(emptyText, fontSize = 20.sp, color = Sand, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         } else {
-            WelcomeClip(welcome, onPlayingChange)
+            HostVideoClip(video, onPlayingChange)
         }
     }
 }
 
-/** The welcome video's first frame with a play button, or the video itself once playing. */
+/** The video's first frame with a play button, or the video itself once playing. */
 @Composable
-private fun WelcomeClip(welcome: WelcomeVideo, onPlayingChange: (Boolean) -> Unit) {
+private fun HostVideoClip(video: HostVideoFile, onPlayingChange: (Boolean) -> Unit) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        var playing by remember(welcome) { mutableStateOf(false) }
+        var playing by remember(video) { mutableStateOf(false) }
         if (playing) {
             // The host is standing at the tablet, so the preview plays out loud.
-            val playback = rememberPlayback(welcome.file, autoPlay = true, onPlayingChange = onPlayingChange, sound = SoundOutput.SPEAKER)
+            val playback = rememberPlayback(video.file, autoPlay = true, onPlayingChange = onPlayingChange, sound = SoundOutput.SPEAKER)
             LaunchedEffect(playback.ended) { if (playback.ended) playing = false }
             VideoFrame(playback, Modifier.fillMaxSize().clickable { playback.toggle() }, contentScale = ContentScale.Crop)
         } else {
-            val frame = rememberVideoFrame(welcome.file, welcome.version)
-            val seconds by produceState<Int?>(null, welcome) { value = withContext(Dispatchers.IO) { videoSeconds(welcome.file) } }
+            val frame = rememberVideoFrame(video.file, video.version)
+            val seconds by produceState<Int?>(null, video) { value = withContext(Dispatchers.IO) { videoSeconds(video.file) } }
             if (frame != null) Image(frame, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             Box(
                 Modifier
@@ -202,7 +219,7 @@ private fun WelcomeClip(welcome: WelcomeVideo, onPlayingChange: (Boolean) -> Uni
             ) {
                 Icon(
                     painterResource(R.drawable.ic_play),
-                    contentDescription = stringResource(R.string.play),
+                    contentDescription = stringResource(R.string.host_messages_play),
                     tint = Ivory,
                     modifier = Modifier.padding(start = 4.dp).size(30.dp),
                 )
@@ -227,34 +244,29 @@ private fun WelcomeClip(welcome: WelcomeVideo, onPlayingChange: (Boolean) -> Uni
 
 /** "Idea · Los novios dando la bienvenida…", a suggestion that fits the event type. */
 @Composable
-private fun IdeaNote(type: EventType) {
+fun IdeaNote(text: String) {
     Row(
         modifier = Modifier.fillMaxWidth().dashedBorder(radius = 18.dp).padding(horizontal = 24.dp, vertical = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(
-            text = stringResource(R.string.host_welcome_idea),
+            text = stringResource(R.string.host_idea),
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.bodyMedium,
         )
-        Text(
-            text = stringResource(
-                when (type) {
-                    EventType.WEDDING -> R.string.host_welcome_idea_wedding
-                    EventType.CHRISTMAS -> R.string.host_welcome_idea_christmas
-                    EventType.BIRTHDAY -> R.string.host_welcome_idea_birthday
-                    EventType.COMPANY -> R.string.host_welcome_idea_company
-                    EventType.OTHER -> R.string.host_welcome_idea_other
-                }
-            ),
-            fontSize = 20.sp,
-            lineHeight = 29.sp,
-            color = Taupe,
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        Text(text = text, fontSize = 20.sp, lineHeight = 29.sp, color = Taupe, style = MaterialTheme.typography.bodyMedium)
     }
+}
+
+@StringRes
+private fun welcomeIdea(type: EventType): Int = when (type) {
+    EventType.WEDDING -> R.string.host_welcome_idea_wedding
+    EventType.CHRISTMAS -> R.string.host_welcome_idea_christmas
+    EventType.BIRTHDAY -> R.string.host_welcome_idea_birthday
+    EventType.COMPANY -> R.string.host_welcome_idea_company
+    EventType.OTHER -> R.string.host_welcome_idea_other
 }
 
 private fun Modifier.dashedBorder(radius: Dp = 20.dp): Modifier = drawBehind {

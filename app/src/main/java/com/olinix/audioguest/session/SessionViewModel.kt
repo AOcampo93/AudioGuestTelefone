@@ -99,16 +99,22 @@ class SessionViewModel(
     /** Digits typed on the host PIN pad. Kept here, not in the state, so the screen never holds the PIN. */
     private var typedPin = ""
 
-    private var welcomeVersion = 0
-    private val _welcomeVideo = MutableStateFlow(files.welcomeVideo.takeIf { it.exists() }?.let { WelcomeVideo(it, welcomeVersion) })
+    /** Bumped each time the host replaces a video, so its frame reloads. */
+    private var hostVideoVersion = 0
+    private val _hostVideos = MutableStateFlow(
+        HostVideo.entries.mapNotNull { kind -> files.hostVideo(kind).takeIf { it.exists() }?.let { kind to HostVideoFile(it, hostVideoVersion) } }.toMap()
+    )
 
-    /** The host's welcome video, or null while there is none. */
-    val welcomeVideo: StateFlow<WelcomeVideo?> = _welcomeVideo.asStateFlow()
+    /** The host's welcome and call videos that exist on the tablet. */
+    val hostVideos: StateFlow<Map<HostVideo, HostVideoFile>> = _hostVideos.asStateFlow()
 
-    private val _welcomeProblem = MutableStateFlow<WelcomeProblem?>(null)
+    private val _videoProblems = MutableStateFlow<Map<HostVideo, VideoProblem>>(emptyMap())
 
-    /** Why the last video the host chose was refused, shown in the panel until the next try. */
-    val welcomeProblem: StateFlow<WelcomeProblem?> = _welcomeProblem.asStateFlow()
+    /** Why the last video the host picked for each place was refused, shown in the panel until the next try. */
+    val videoProblems: StateFlow<Map<HostVideo, VideoProblem>> = _videoProblems.asStateFlow()
+
+    /** Waits for the next call of call mode, then rings. */
+    private var callJob: Job? = null
 
     init {
         files.clearPending()
@@ -117,6 +123,7 @@ class SessionViewModel(
             _settingsLoaded.value = true
             // Show mode may be on, and its countdown starts from the invitation.
             restartInactivityTimer()
+            scheduleCall()
         }
         moveTo(SessionState.Idle)
         viewModelScope.launch { handsetConnected.collect(::onHandsetChanged) }
@@ -129,8 +136,23 @@ class SessionViewModel(
         _microphone.value = Microphone.HANDSET
         _playerSound.value = SoundOutput.HANDSET
         // The welcome video plays first, if the host turned it on and there is one.
-        val welcome = _settings.value.welcomeVideo && _welcomeVideo.value != null
+        val welcome = _settings.value.welcomeVideo && HostVideo.WELCOME in _hostVideos.value
         moveTo(if (welcome) SessionState.Welcome else SessionState.Menu)
+    }
+
+    /** "Contestar", a tap anywhere or the handset button while the booth rings. */
+    fun answer() {
+        if (_state.value != SessionState.Ringing) return
+        timerJob?.cancel()
+        _microphone.value = Microphone.HANDSET
+        _playerSound.value = SoundOutput.HANDSET
+        scheduleCall()
+        if (HostVideo.CALL in _hostVideos.value) moveTo(SessionState.CallIntro) else startCountdown(_settings.value.callAnswerMode)
+    }
+
+    /** The question ended, or the guest skipped it: their answer is recorded next. */
+    fun finishCallIntro() {
+        if (_state.value == SessionState.CallIntro) startCountdown(_settings.value.callAnswerMode)
     }
 
     /** "Saltar", or the welcome video reached its end. */
@@ -138,9 +160,13 @@ class SessionViewModel(
         if (_state.value == SessionState.Welcome) moveTo(SessionState.Menu)
     }
 
-    /** The button on the handset does what a touch on the screen does: it wakes the invitation. */
+    /** The button on the handset does what a touch on the screen does: it wakes the invitation or answers the call. */
     fun onHandsetButton() {
-        if (showsInvitation(_state.value)) start() else onUserInteraction()
+        when {
+            _state.value == SessionState.Ringing -> answer()
+            showsInvitation(_state.value) -> start()
+            else -> onUserInteraction()
+        }
     }
 
     fun back() {
@@ -149,8 +175,14 @@ class SessionViewModel(
                 timerJob?.cancel()
                 moveTo(SessionState.Idle)
             }
-            SessionState.Menu -> moveTo(SessionState.Idle)
+            SessionState.Menu, SessionState.CallIntro -> moveTo(SessionState.Idle)
             SessionState.Welcome -> moveTo(SessionState.Menu)
+            // Turning the call down: it rings again at the next call.
+            SessionState.Ringing -> {
+                timerJob?.cancel()
+                moveTo(SessionState.Idle)
+                scheduleCall()
+            }
             is SessionState.Gallery -> moveTo(SessionState.Menu)
             is SessionState.Player -> moveTo(SessionState.Gallery(current.filter))
             is SessionState.Error, is SessionState.HostLogin, is SessionState.HostPanel -> moveTo(SessionState.Idle)
@@ -198,14 +230,14 @@ class SessionViewModel(
         val capturing = _state.value as? SessionState.Capturing ?: return
         // A second tap while the file is being finished changes nothing.
         if (capturingFile == null) return
-        runTimer { stopCapture(capturing.mode, capturing.elapsedSeconds, capturing.welcome) }
+        runTimer { stopCapture(capturing.mode, capturing.elapsedSeconds, capturing.hostVideo) }
     }
 
     fun save() {
         val review = _state.value as? SessionState.Review ?: return
-        if (review.welcome) {
-            useAsWelcome(review.file)
-            moveTo(SessionState.HostPanel(HostSection.WELCOME))
+        review.hostVideo?.let { kind ->
+            useAsHostVideo(review.file, kind)
+            moveTo(SessionState.HostPanel(kind.section))
             return
         }
         val kept = files.keep(review.file)
@@ -246,14 +278,14 @@ class SessionViewModel(
     fun retry() {
         val review = _state.value as? SessionState.Review ?: return
         files.discard(review.file)
-        startCountdown(review.mode, review.welcome)
+        startCountdown(review.mode, review.hostVideo)
     }
 
-    /** Called after the guest (or the host, for the welcome video) confirmed "Sí, descartar". */
+    /** Called after the guest (or the host, for one of their videos) confirmed "Sí, descartar". */
     fun discard() {
         val review = _state.value as? SessionState.Review ?: return
         files.discard(review.file)
-        moveTo(if (review.welcome) SessionState.HostPanel(HostSection.WELCOME) else SessionState.Menu)
+        moveTo(review.hostVideo?.let { SessionState.HostPanel(it.section) } ?: SessionState.Menu)
     }
 
     /** Any touch on the screen keeps the current screen alive for another [SessionConfig.inactivitySeconds]. */
@@ -304,39 +336,51 @@ class SessionViewModel(
         restartInactivityTimer()
     }
 
-    /** "Grabar con la tablet": the guests' video recording, cut at [SessionConfig.maxWelcomeSeconds]. */
-    fun recordWelcome() {
+    /** "Grabar con la tablet": the guests' video recording, cut at [SessionConfig.maxHostVideoSeconds]. */
+    fun recordHostVideo(kind: HostVideo) {
         if (_state.value !is SessionState.HostPanel) return
-        _welcomeProblem.value = null
-        startCountdown(RecordingMode.VIDEO, welcome = true)
+        _videoProblems.value -= kind
+        startCountdown(RecordingMode.VIDEO, hostVideo = kind)
     }
 
     /**
      * "Elegir un archivo". [copy] writes the chosen video into the file it is given and returns
      * its length in seconds, or null if it could not be read. Videos over the limit are refused.
      */
-    fun importWelcome(copy: suspend (File) -> Int?) {
+    fun importHostVideo(kind: HostVideo, copy: suspend (File) -> Int?) {
         if (_state.value !is SessionState.HostPanel) return
         val pending = files.newPending(RecordingMode.VIDEO)
         viewModelScope.launch {
             val seconds = copy(pending)
             val problem = when {
-                seconds == null -> WelcomeProblem.UNREADABLE
-                seconds > config.maxWelcomeSeconds -> WelcomeProblem.TOO_LONG
+                seconds == null -> VideoProblem.UNREADABLE
+                seconds > config.maxHostVideoSeconds -> VideoProblem.TOO_LONG
                 else -> null
             }
-            _welcomeProblem.value = problem
-            if (problem == null) useAsWelcome(pending) else files.discard(pending)
+            _videoProblems.value = if (problem == null) _videoProblems.value - kind else _videoProblems.value + (kind to problem)
+            if (problem == null) useAsHostVideo(pending, kind) else files.discard(pending)
             restartInactivityTimer()
         }
     }
 
-    fun deleteWelcome() {
+    /** Without its video, the welcome is skipped and call mode turns off. */
+    fun deleteHostVideo(kind: HostVideo) {
         if (_state.value !is SessionState.HostPanel) return
-        files.deleteWelcome()
-        _welcomeVideo.value = null
-        _welcomeProblem.value = null
-        changeSettings { it.copy(welcomeVideo = false) }
+        files.deleteHostVideo(kind)
+        _hostVideos.value -= kind
+        _videoProblems.value -= kind
+        changeSettings { it.withHostVideo(kind, on = false) }
+    }
+
+    /** "Probar llamada": the panel closes and the booth rings a moment later, even with call mode off. */
+    fun testCall() {
+        if (_state.value !is SessionState.HostPanel) return
+        moveTo(SessionState.Idle)
+        callJob?.cancel()
+        callJob = viewModelScope.launch {
+            delay(config.testCallSeconds * ONE_SECOND)
+            if (showsInvitation(_state.value)) ring()
+        }
     }
 
     /** "Eliminar" in the panel's list of messages, once the host confirmed. Its file goes too. */
@@ -369,17 +413,52 @@ class SessionViewModel(
     }
 
     private fun changeSettings(change: (HostSettings) -> HostSettings) {
-        val updated = change(_settings.value)
+        val previous = _settings.value
+        val updated = change(previous)
         _settings.value = updated
         viewModelScope.launch { hostSettings.save(updated) }
+        if (updated.callMode != previous.callMode || updated.callEveryMinutes != previous.callEveryMinutes) scheduleCall()
     }
 
-    /** A host who records or picks a welcome video wants guests to see it, so it is switched on too. */
-    private fun useAsWelcome(file: File) {
-        files.keepAsWelcome(file)
-        welcomeVersion++
-        _welcomeVideo.value = WelcomeVideo(files.welcomeVideo, welcomeVersion)
-        changeSettings { it.copy(welcomeVideo = true) }
+    /** A host who records or picks a video wants guests to see it, so its welcome or call is switched on too. */
+    private fun useAsHostVideo(file: File, kind: HostVideo) {
+        files.keepAsHostVideo(file, kind)
+        hostVideoVersion++
+        _hostVideos.value += kind to HostVideoFile(files.hostVideo(kind), hostVideoVersion)
+        changeSettings { it.withHostVideo(kind, on = true) }
+    }
+
+    private fun HostSettings.withHostVideo(kind: HostVideo, on: Boolean): HostSettings = when (kind) {
+        HostVideo.WELCOME -> copy(welcomeVideo = on)
+        HostVideo.CALL -> copy(callMode = on)
+    }
+
+    /** Call mode needs the question to play when someone answers. */
+    private fun callModeActive(): Boolean = _settings.value.callMode && HostVideo.CALL in _hostVideos.value
+
+    /** Plans the next call [delaySeconds] from now, replacing the one planned before. Off, nothing is planned. */
+    private fun scheduleCall(delaySeconds: Int = nextCallDelay()) {
+        callJob?.cancel()
+        if (!callModeActive()) return
+        callJob = viewModelScope.launch {
+            delay(delaySeconds * ONE_SECOND)
+            // Never over someone using the booth, nor with the handset unplugged: try again in a while.
+            while (!showsInvitation(_state.value) || _handsetMissing.value) delay(config.callBusyRetrySeconds * ONE_SECOND)
+            ring()
+        }
+    }
+
+    /** The host's interval, give or take a fifth, so the calls do not feel mechanical. */
+    private fun nextCallDelay(): Int = (_settings.value.callEveryMinutes * 60 * random.nextDouble(0.8, 1.2)).toInt()
+
+    /** Rings for [SessionConfig.ringSeconds]. Unanswered, the booth goes back to the invitation and waits for the next call. */
+    private fun ring() {
+        runTimer {
+            moveTo(SessionState.Ringing)
+            delay(config.ringSeconds * ONE_SECOND)
+            moveTo(SessionState.Idle)
+            scheduleCall()
+        }
     }
 
     /** "¡Gracias!" for [seconds], then back to the invitation. */
@@ -391,23 +470,23 @@ class SessionViewModel(
         moveTo(SessionState.Idle)
     }
 
-    private fun startCountdown(mode: RecordingMode, welcome: Boolean = false) {
+    private fun startCountdown(mode: RecordingMode, hostVideo: HostVideo? = null) {
         // The host records from the tablet, standing in front of it rather than holding the handset.
-        val microphone = if (welcome) Microphone.TABLET else _microphone.value
+        val microphone = if (hostVideo != null) Microphone.TABLET else _microphone.value
         // The camera takes a moment to open, so it starts now and its preview shows behind the numbers.
         val ready = viewModelScope.async { recorderFor(mode).prepare(microphone) }
         preparing = ready
         runTimer {
             // 3, 2, 1 and then 0, which the screen shows as "¡Ahora!".
             for (number in config.countdownFrom downTo 0) {
-                moveTo(SessionState.Countdown(mode, number, welcome))
+                moveTo(SessionState.Countdown(mode, number, hostVideo))
                 delay(ONE_SECOND)
             }
-            record(mode, ready.await(), welcome)
+            record(mode, ready.await(), hostVideo)
         }
     }
 
-    private suspend fun record(mode: RecordingMode, ready: Boolean, welcome: Boolean) {
+    private suspend fun record(mode: RecordingMode, ready: Boolean, hostVideo: HostVideo?) {
         val recorder = recorderFor(mode)
         val file = files.newPending(mode)
         if (!ready || !recorder.start(file)) {
@@ -419,16 +498,16 @@ class SessionViewModel(
         }
         capturingFile = file
 
-        val maxSeconds = if (welcome) config.maxWelcomeSeconds else config.maxSecondsFor(mode)
+        val maxSeconds = if (hostVideo != null) config.maxHostVideoSeconds else config.maxSecondsFor(mode)
         for (elapsed in 0 until maxSeconds) {
-            moveTo(SessionState.Capturing(mode, elapsed, maxSeconds, welcome))
+            moveTo(SessionState.Capturing(mode, elapsed, maxSeconds, hostVideo))
             delay(ONE_SECOND)
         }
         // Time is up: the recording ends on its own.
-        stopCapture(mode, maxSeconds, welcome)
+        stopCapture(mode, maxSeconds, hostVideo)
     }
 
-    private suspend fun stopCapture(mode: RecordingMode, seconds: Int, welcome: Boolean) {
+    private suspend fun stopCapture(mode: RecordingMode, seconds: Int, hostVideo: HostVideo?) {
         val file = capturingFile ?: return
         capturingFile = null
         val recorder = recorderFor(mode)
@@ -439,13 +518,13 @@ class SessionViewModel(
             moveTo(SessionState.Error(ErrorReason.RECORDING_FAILED))
             return
         }
-        moveTo(SessionState.Review(mode, seconds, file, welcome))
+        moveTo(SessionState.Review(mode, seconds, file, hostVideo))
     }
 
     private fun onHandsetChanged(connected: Boolean) {
         val missing = !connected && config.requireHandset
         _handsetMissing.value = missing
-        // The host records the welcome video with or without the handset.
+        // The host records their videos with or without the handset.
         if (missing && !_state.value.isHostScreen) abandonRecording()
     }
 
@@ -546,8 +625,8 @@ class SessionViewModel(
         SessionState.Menu, is SessionState.Gallery, is SessionState.Review,
         is SessionState.Player, is SessionState.Error,
         is SessionState.HostLogin, is SessionState.HostPanel,
-        // If the welcome video cannot play, guests are not left in front of a still picture.
-        SessionState.Welcome -> true
+        // If the host's video cannot play, guests are not left in front of a still picture.
+        SessionState.Welcome, SessionState.CallIntro -> true
         else -> false
     }
 

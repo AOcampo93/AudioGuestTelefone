@@ -34,6 +34,9 @@ enum class LightScene {
 
     /** Orange blink. */
     ERROR,
+
+    /** Fast white flashes in time with the bell, like an old phone ringing. */
+    RINGING,
 }
 
 /** Final seconds in which the recording warns in amber. */
@@ -49,7 +52,8 @@ fun lightSceneFor(state: SessionState): LightScene = when (state) {
         state.mode == RecordingMode.VIDEO -> LightScene.RECORDING_VIDEO
         else -> LightScene.RECORDING_AUDIO
     }
-    is SessionState.Review, is SessionState.Player, SessionState.Welcome -> LightScene.REVIEW
+    is SessionState.Review, is SessionState.Player, SessionState.Welcome, SessionState.CallIntro -> LightScene.REVIEW
+    SessionState.Ringing -> LightScene.RINGING
     is SessionState.Saved -> LightScene.SAVED
     is SessionState.Error -> LightScene.ERROR
 }

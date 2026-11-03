@@ -104,6 +104,14 @@
     <string name="show_chip">Mensajes de los invitados</string>
     <string name="show_cta">Toca y deja el tuyo</string>
 
+    <!-- Call mode -->
+    <string name="call_incoming">Llamada entrante</string>
+    <string name="call_title">Te están llamando</string>
+    <string name="call_body">Descuelga el auricular y toca para contestar</string>
+    <string name="call_answer">Contestar</string>
+    <string name="call_question_chip">Una pregunta para ti</string>
+    <string name="call_answer_now">Responder ya</string>
+
     <!-- Event, as guests see it -->
     <string name="event_label_wedding">Boda de</string>
     <string name="event_label_christmas">Navidad con</string>
@@ -129,12 +137,15 @@
 
     <string name="host_tab_event" translatable="false">Evento</string>
     <string name="host_tab_welcome" translatable="false">Bienvenida</string>
+    <string name="host_tab_call" translatable="false">Llamada</string>
     <string name="host_tab_guests" translatable="false">Invitados</string>
     <string name="host_tab_messages" translatable="false">Mensajes</string>
     <string name="host_event_title" translatable="false">Evento</string>
     <string name="host_event_body" translatable="false">Tipo de evento, nombres, fecha y color.</string>
     <string name="host_welcome_title" translatable="false">Video de bienvenida</string>
     <string name="host_welcome_body" translatable="false">Un saludo en video antes de que los invitados graben.</string>
+    <string name="host_call_title" translatable="false">Modo llamada</string>
+    <string name="host_call_body" translatable="false">La cabina suena y quien contesta responde a tu pregunta.</string>
     <string name="host_guests_title" translatable="false">Experiencia del invitado</string>
     <string name="host_guests_body" translatable="false">Idioma, mensajes permitidos, galería, compartir y Modo Show.</string>
 
@@ -178,13 +189,13 @@
     <string name="host_sound" translatable="false">Sonido</string>
     <string name="host_sound_handset" translatable="false">Auricular</string>
     <string name="host_sound_speaker" translatable="false">Altavoz de la tablet</string>
-    <string name="host_welcome_record" translatable="false">Grabar con la tablet</string>
-    <string name="host_welcome_pick" translatable="false">Elegir un archivo</string>
-    <string name="host_welcome_delete" translatable="false">Eliminar video</string>
+    <string name="host_video_record" translatable="false">Grabar con la tablet</string>
+    <string name="host_video_pick" translatable="false">Elegir un archivo</string>
+    <string name="host_video_delete" translatable="false">Eliminar video</string>
     <string name="host_welcome_none" translatable="false">Todavía no hay video</string>
-    <string name="host_welcome_too_long" translatable="false">Ese video dura más de %1$d s. Elige uno más corto o grábalo con la tablet.</string>
-    <string name="host_welcome_unreadable" translatable="false">No se pudo abrir ese archivo como video.</string>
-    <string name="host_welcome_idea" translatable="false">Idea</string>
+    <string name="host_video_too_long" translatable="false">Ese video dura más de %1$d s. Elige uno más corto o grábalo con la tablet.</string>
+    <string name="host_video_unreadable" translatable="false">No se pudo abrir ese archivo como video.</string>
+    <string name="host_idea" translatable="false">Idea</string>
     <string name="host_welcome_idea_wedding" translatable="false">Los novios dando la bienvenida e invitando a dejar un mensaje.</string>
     <string name="host_welcome_idea_christmas" translatable="false">Santa Claus saludando e invitando a todos a dejar su mensaje navideño.</string>
     <string name="host_welcome_idea_birthday" translatable="false">El cumpleañero/a saludando a sus invitados.</string>
@@ -194,6 +205,27 @@
     <string name="host_welcome_delete_body" translatable="false">Los invitados pasarán directo al menú.</string>
     <string name="host_delete_keep" translatable="false">No, conservar</string>
     <string name="host_delete_confirm" translatable="false">Sí, eliminar</string>
+
+    <string name="host_call_switch" translatable="false">Llamar de vez en cuando</string>
+    <string name="host_call_switch_body" translatable="false">Cuando nadie usa la cabina, suena el timbre por el altavoz. Quien contesta ve tu pregunta y graba su respuesta. Si nadie contesta en 30 s, vuelve a sonar más tarde.</string>
+    <string name="host_call_needs_video" translatable="false">Graba o elige primero el video con la pregunta.</string>
+    <string name="host_call_every" translatable="false">Llamar cada</string>
+    <string name="host_call_every_note" translatable="false">aprox., nunca con alguien grabando</string>
+    <string name="host_call_video" translatable="false">Video con la pregunta</string>
+    <string name="host_call_none" translatable="false">Todavía no hay pregunta</string>
+    <string name="host_call_answer" translatable="false">Responder con</string>
+    <string name="host_call_answer_voice" translatable="false">Voz</string>
+    <string name="host_call_answer_video" translatable="false">Video</string>
+    <string name="host_call_test" translatable="false">Probar llamada</string>
+    <string name="host_call_test_body" translatable="false">Cierra el panel y la cabina suena a los 3 segundos, aunque el modo llamada esté apagado.</string>
+    <string name="host_call_test_button" translatable="false">Probar</string>
+    <string name="host_call_delete_title" translatable="false">¿Eliminar el video de la pregunta?</string>
+    <string name="host_call_delete_body" translatable="false">El modo llamada se apagará hasta que grabes otro.</string>
+    <string name="host_call_idea_wedding" translatable="false">«¿Qué consejo le darías a los novios para su vida juntos?»</string>
+    <string name="host_call_idea_christmas" translatable="false">«¿Cuál es tu mejor recuerdo de Navidad en familia?»</string>
+    <string name="host_call_idea_birthday" translatable="false">«¿Qué le deseas al cumpleañero/a para este nuevo año?»</string>
+    <string name="host_call_idea_company" translatable="false">«¿Qué logro del equipo celebrarías este año?»</string>
+    <string name="host_call_idea_other" translatable="false">«¿Qué le dirías hoy a los protagonistas?»</string>
 
     <string name="host_language" translatable="false">Idioma de la pantalla</string>
     <string name="host_language_default" translatable="false">predeterminado</string>

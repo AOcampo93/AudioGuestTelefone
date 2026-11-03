@@ -1,6 +1,7 @@
 package com.olinix.audioguest.audio
 
 import com.olinix.audioguest.data.Recording
+import com.olinix.audioguest.session.HostVideo
 import com.olinix.audioguest.session.RecordingMode
 import java.io.File
 
@@ -12,8 +13,13 @@ class RecordingFiles(root: File) {
 
     private val directory = File(root, "recordings").apply { mkdirs() }
 
-    /** The host's welcome video. There is only ever one, kept apart from the guests' messages. */
-    val welcomeVideo: File = File(root, "welcome.mp4")
+    /** The host's welcome and call videos. There is only ever one of each, kept apart from the guests' messages. */
+    private val hostVideos = mapOf(
+        HostVideo.WELCOME to File(root, "welcome.mp4"),
+        HostVideo.CALL to File(root, "call.mp4"),
+    )
+
+    fun hostVideo(kind: HostVideo): File = hostVideos.getValue(kind)
 
     fun newPending(mode: RecordingMode): File =
         File(directory, "$PENDING_PREFIX${prefix(mode)}-${System.currentTimeMillis()}.${extension(mode)}")
@@ -25,13 +31,14 @@ class RecordingFiles(root: File) {
         return kept
     }
 
-    /** Makes a just-recorded or just-copied video the welcome video, replacing the previous one. */
-    fun keepAsWelcome(pending: File) {
-        if (!pending.renameTo(welcomeVideo)) pending.copyTo(welcomeVideo, overwrite = true).also { pending.delete() }
+    /** Makes a just-recorded or just-copied video one of the host's videos, replacing the previous one. */
+    fun keepAsHostVideo(pending: File, kind: HostVideo) {
+        val target = hostVideo(kind)
+        if (!pending.renameTo(target)) pending.copyTo(target, overwrite = true).also { pending.delete() }
     }
 
-    fun deleteWelcome() {
-        welcomeVideo.delete()
+    fun deleteHostVideo(kind: HostVideo) {
+        hostVideo(kind).delete()
     }
 
     fun fileFor(recording: Recording): File = File(directory, recording.fileName)

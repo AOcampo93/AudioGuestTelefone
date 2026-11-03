@@ -20,8 +20,14 @@ data class SessionConfig(
      * Turned off only on the emulator, which cannot plug in a USB handset.
      */
     val requireHandset: Boolean = true,
-    /** The host's welcome video, short so guests reach the menu quickly. */
-    val maxWelcomeSeconds: Int = 30,
+    /** The host's welcome and call videos, short so guests get to their own message quickly. */
+    val maxHostVideoSeconds: Int = 30,
+    /** How long the booth rings before giving up until the next call. */
+    val ringSeconds: Int = 30,
+    /** A call that comes due while someone uses the booth tries again this often. */
+    val callBusyRetrySeconds: Int = 60,
+    /** "Probar llamada" rings this long after the panel closes. */
+    val testCallSeconds: Int = 3,
     /** Show mode plays each message for this long at most, so many guests get their turn. */
     val showClipSeconds: Int = 15,
     /** Opens the host panel. Fixed for now; the host settings will let the host change it. */

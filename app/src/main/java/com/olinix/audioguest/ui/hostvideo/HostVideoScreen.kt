@@ -1,5 +1,6 @@
-package com.olinix.audioguest.ui.welcome
+package com.olinix.audioguest.ui.hostvideo
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,7 +34,7 @@ import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.audio.VideoFrame
 import com.olinix.audioguest.audio.rememberPlayback
 import com.olinix.audioguest.session.EventInfo
-import com.olinix.audioguest.session.WelcomeVideo
+import com.olinix.audioguest.session.HostVideoFile
 import com.olinix.audioguest.ui.components.ProgressBar
 import com.olinix.audioguest.ui.components.screenBackground
 import com.olinix.audioguest.ui.show.OverlayChip
@@ -43,20 +44,24 @@ import com.olinix.audioguest.ui.theme.IvorySoft
 import com.olinix.audioguest.ui.theme.Surface
 
 /**
- * Screen 13 · The host's welcome video, heard through the handset or the tablet's speaker as the
- * host chose. "Saltar", a tap anywhere or the end of the video moves on to the menu.
+ * Screen 13 · One of the host's videos full screen: the welcome before the menu, or the question
+ * of a call. It is heard through the handset or the tablet's speaker, as [sound] says.
+ * [skip], a tap anywhere or the end of the video calls [onFinish].
  */
 @Composable
-fun WelcomeScreen(
-    welcome: WelcomeVideo,
+fun HostVideoScreen(
+    video: HostVideoFile,
     event: EventInfo,
+    title: String,
+    @DrawableRes titleIcon: Int,
+    skip: String,
     onFinish: () -> Unit,
     onPlayingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     sound: SoundOutput = SoundOutput.HANDSET,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val playback = rememberPlayback(welcome.file, autoPlay = true, onPlayingChange = onPlayingChange, sound = sound)
+    val playback = rememberPlayback(video.file, autoPlay = true, onPlayingChange = onPlayingChange, sound = sound)
     LaunchedEffect(playback.ended) { if (playback.ended) onFinish() }
 
     Box(
@@ -69,7 +74,7 @@ fun WelcomeScreen(
         Box(Modifier.fillMaxSize().background(VideoShade))
 
         Column(Modifier.padding(56.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            OverlayChip(R.drawable.ic_video, stringResource(R.string.welcome_chip), iconSize = 28.dp, bold = true)
+            OverlayChip(titleIcon, title, iconSize = 28.dp, bold = true)
             if (sound == SoundOutput.SPEAKER) {
                 OverlayChip(R.drawable.ic_speaker, stringResource(R.string.player_listen_speaker), outlined = true)
             } else {
@@ -94,7 +99,7 @@ fun WelcomeScreen(
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
-            SkipButton(onClick = onFinish, modifier = Modifier.align(Alignment.End))
+            SkipButton(text = skip, onClick = onFinish, modifier = Modifier.align(Alignment.End))
         }
 
         ProgressBar(
@@ -110,7 +115,7 @@ fun WelcomeScreen(
 
 /** "Saltar ⏭" */
 @Composable
-private fun SkipButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun SkipButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(percent = 50)
     Row(
         modifier = modifier
@@ -123,7 +128,7 @@ private fun SkipButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = stringResource(R.string.welcome_skip), fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = Ivory, style = MaterialTheme.typography.titleLarge)
+        Text(text = text, fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = Ivory, style = MaterialTheme.typography.titleLarge)
         Icon(painterResource(R.drawable.ic_next), contentDescription = null, tint = Ivory, modifier = Modifier.size(30.dp))
     }
 }

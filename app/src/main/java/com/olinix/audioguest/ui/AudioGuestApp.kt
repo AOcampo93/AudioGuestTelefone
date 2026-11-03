@@ -27,6 +27,7 @@ import com.olinix.audioguest.R
 import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.copyVideo
 import com.olinix.audioguest.camera.CameraFeed
+import com.olinix.audioguest.session.HostVideo
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionConfig
 import com.olinix.audioguest.session.SessionState
@@ -41,7 +42,7 @@ import com.olinix.audioguest.ui.host.HostCorner
 import com.olinix.audioguest.ui.host.HostLoginScreen
 import com.olinix.audioguest.ui.host.HostPanelScreen
 import com.olinix.audioguest.ui.host.MessageActions
-import com.olinix.audioguest.ui.host.WelcomeActions
+import com.olinix.audioguest.ui.host.HostVideoActions
 import com.olinix.audioguest.ui.idle.IdleScreen
 import com.olinix.audioguest.ui.menu.MenuScreen
 import com.olinix.audioguest.ui.player.PlayerScreen
@@ -50,7 +51,8 @@ import com.olinix.audioguest.ui.review.ReviewScreen
 import com.olinix.audioguest.ui.saved.SavedScreen
 import com.olinix.audioguest.ui.saved.shareMessage
 import com.olinix.audioguest.ui.show.ShowScreen
-import com.olinix.audioguest.ui.welcome.WelcomeScreen
+import com.olinix.audioguest.ui.hostvideo.HostVideoScreen
+import com.olinix.audioguest.ui.call.RingingScreen
 import com.olinix.audioguest.ui.theme.Charcoal
 import kotlinx.coroutines.flow.StateFlow
 
@@ -70,16 +72,27 @@ fun AudioGuestApp(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recordings by viewModel.recordings.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val welcomeVideo by viewModel.welcomeVideo.collectAsStateWithLifecycle()
-    val welcomeProblem by viewModel.welcomeProblem.collectAsStateWithLifecycle()
+    val hostVideos by viewModel.hostVideos.collectAsStateWithLifecycle()
+    val videoProblems by viewModel.videoProblems.collectAsStateWithLifecycle()
     val microphone by viewModel.microphone.collectAsStateWithLifecycle()
     val playerSound by viewModel.playerSound.collectAsStateWithLifecycle()
     val event = eventInfoOf(settings)
+    val context = LocalContext.current
     // Guests only see and hear the kinds of message the host allows.
     val guestRecordings = recordings.filter { settings.allows(it.mode) }
-    // The host records the welcome video with the tablet's own microphone.
+    // The host records their videos with the tablet's own microphone.
     val recordingMicrophone = if (state.isHostScreen) Microphone.TABLET else microphone
-    val context = LocalContext.current
+    val hostVideoActions = { kind: HostVideo ->
+        HostVideoActions(
+            video = hostVideos[kind],
+            problem = videoProblems[kind],
+            maxSeconds = config.maxHostVideoSeconds,
+            onRecord = { viewModel.recordHostVideo(kind) },
+            onImport = { uri -> viewModel.importHostVideo(kind) { target -> copyVideo(context, uri, target) } },
+            onDelete = { viewModel.deleteHostVideo(kind) },
+            onPlayingChange = viewModel::onPlaybackChanged,
+        )
+    }
     // The host does not need the handset, so the warning stays off the host screens.
     val handsetMissing = viewModel.handsetMissing.collectAsStateWithLifecycle().value && !state.isHostScreen
 
@@ -115,13 +128,29 @@ fun AudioGuestApp(
         ) { current ->
             when (current) {
                 SessionState.Idle -> IdleScreen(event = event, onTap = viewModel::start)
-                SessionState.Welcome -> welcomeVideo?.let { video ->
-                    WelcomeScreen(
-                        welcome = video,
+                SessionState.Welcome -> hostVideos[HostVideo.WELCOME]?.let { video ->
+                    HostVideoScreen(
+                        video = video,
                         event = event,
+                        title = stringResource(R.string.welcome_chip),
+                        titleIcon = R.drawable.ic_video,
+                        skip = stringResource(R.string.welcome_skip),
                         onFinish = viewModel::finishWelcome,
                         onPlayingChange = viewModel::onPlaybackChanged,
                         sound = settings.welcomeSound,
+                    )
+                }
+                SessionState.Ringing -> RingingScreen(event = event, onAnswer = viewModel::answer)
+                // A call is a phone call: the question is heard through the handset.
+                SessionState.CallIntro -> hostVideos[HostVideo.CALL]?.let { video ->
+                    HostVideoScreen(
+                        video = video,
+                        event = event,
+                        title = stringResource(R.string.call_question_chip),
+                        titleIcon = R.drawable.ic_phone_filled,
+                        skip = stringResource(R.string.call_answer_now),
+                        onFinish = viewModel::finishCallIntro,
+                        onPlayingChange = viewModel::onPlaybackChanged,
                     )
                 }
                 is SessionState.Show -> recordings.firstOrNull { it.id == current.recordingId }?.let { recording ->
@@ -207,15 +236,9 @@ fun AudioGuestApp(
                     onChange = viewModel::updateSettings,
                     onClose = viewModel::back,
                     onExitApp = onExitApp,
-                    welcome = WelcomeActions(
-                        video = welcomeVideo,
-                        problem = welcomeProblem,
-                        maxSeconds = config.maxWelcomeSeconds,
-                        onRecord = viewModel::recordWelcome,
-                        onImport = { uri -> viewModel.importWelcome { target -> copyVideo(context, uri, target) } },
-                        onDelete = viewModel::deleteWelcome,
-                        onPlayingChange = viewModel::onPlaybackChanged,
-                    ),
+                    welcome = hostVideoActions(HostVideo.WELCOME),
+                    call = hostVideoActions(HostVideo.CALL),
+                    onTestCall = viewModel::testCall,
                     messages = MessageActions(
                         recordings = recordings,
                         fileOf = viewModel::fileOf,

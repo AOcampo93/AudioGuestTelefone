@@ -34,6 +34,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import kotlin.random.Random
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionViewModelTest {
@@ -502,14 +503,14 @@ class SessionViewModelTest {
     @Test
     fun theHostRecordsAWelcomeVideoThatGuestsSeeFirst() = runTest(dispatcher) {
         openHostPanel()
-        viewModel.recordWelcome()
+        viewModel.recordHostVideo(HostVideo.WELCOME)
         runCurrent()
         waitSeconds(4)
-        assertEquals(SessionState.Capturing(RecordingMode.VIDEO, 0, 30, welcome = true), viewModel.state.value)
+        assertEquals(SessionState.Capturing(RecordingMode.VIDEO, 0, 30, hostVideo = HostVideo.WELCOME), viewModel.state.value)
 
         // It stops by itself at 30 s, and saving it goes back to the panel instead of "¡Gracias!".
         waitSeconds(30)
-        assertTrue((viewModel.state.value as SessionState.Review).welcome)
+        assertTrue((viewModel.state.value as SessionState.Review).hostVideo == HostVideo.WELCOME)
         viewModel.save()
         assertEquals(SessionState.HostPanel(HostSection.WELCOME), viewModel.state.value)
         assertTrue(viewModel.settings.value.welcomeVideo)
@@ -526,18 +527,18 @@ class SessionViewModelTest {
     @Test
     fun aChosenWelcomeVideoMustBeShort() = runTest(dispatcher) {
         openHostPanel()
-        viewModel.importWelcome { target -> target.writeText("video"); 45 }
+        viewModel.importHostVideo(HostVideo.WELCOME) { target -> target.writeText("video"); 45 }
         runCurrent()
-        assertEquals(WelcomeProblem.TOO_LONG, viewModel.welcomeProblem.value)
-        assertNull(viewModel.welcomeVideo.value)
+        assertEquals(VideoProblem.TOO_LONG, viewModel.videoProblems.value[HostVideo.WELCOME])
+        assertNull(viewModel.hostVideos.value[HostVideo.WELCOME])
 
-        viewModel.importWelcome { target -> target.writeText("video"); 18 }
+        viewModel.importHostVideo(HostVideo.WELCOME) { target -> target.writeText("video"); 18 }
         runCurrent()
-        assertNull(viewModel.welcomeProblem.value)
-        assertEquals(1, viewModel.welcomeVideo.value?.version)
+        assertNull(viewModel.videoProblems.value[HostVideo.WELCOME])
+        assertEquals(1, viewModel.hostVideos.value[HostVideo.WELCOME]?.version)
 
-        viewModel.deleteWelcome()
-        assertNull(viewModel.welcomeVideo.value)
+        viewModel.deleteHostVideo(HostVideo.WELCOME)
+        assertNull(viewModel.hostVideos.value[HostVideo.WELCOME])
         assertFalse(viewModel.settings.value.welcomeVideo)
         viewModel.back()
         viewModel.start()
@@ -547,12 +548,12 @@ class SessionViewModelTest {
     @Test
     fun theHostRecordsTheWelcomeWithoutTheHandset() = runTest(dispatcher) {
         openHostPanel()
-        viewModel.recordWelcome()
+        viewModel.recordHostVideo(HostVideo.WELCOME)
         runCurrent()
         waitSeconds(6)
         handset.value = false
         runCurrent()
-        assertTrue((viewModel.state.value as SessionState.Capturing).welcome)
+        assertTrue((viewModel.state.value as SessionState.Capturing).hostVideo == HostVideo.WELCOME)
         assertTrue(video.isRecording)
     }
 
@@ -584,7 +585,7 @@ class SessionViewModelTest {
     @Test
     fun theHostRecordsTheWelcomeWithTheTabletMicrophone() = runTest(dispatcher) {
         openHostPanel()
-        viewModel.recordWelcome()
+        viewModel.recordHostVideo(HostVideo.WELCOME)
         runCurrent()
         assertEquals(Microphone.TABLET, video.microphone)
     }
@@ -663,6 +664,128 @@ class SessionViewModelTest {
         runCurrent()
         assertTrue(viewModel.recordings.value.isEmpty())
         assertFalse(viewModel.fileOf(saved).exists())
+    }
+
+    @Test
+    fun aCallIsAnsweredWithTheHandsetAndRecordsTheAnswer() = runTest(dispatcher) {
+        setUpCallMode()
+        // Calls come every 10 minutes, give or take a fifth: this one at the earliest, 8 minutes.
+        waitSeconds(479)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        waitSeconds(1)
+        assertEquals(SessionState.Ringing, viewModel.state.value)
+        assertEquals(LightScene.RINGING, lights.shown.last())
+
+        viewModel.onHandsetButton()
+        assertEquals(SessionState.CallIntro, viewModel.state.value)
+
+        // After the question, the answer is recorded as a voice message, from the handset.
+        viewModel.finishCallIntro()
+        runCurrent()
+        assertEquals(SessionState.Countdown(RecordingMode.AUDIO, 3), viewModel.state.value)
+        assertEquals(Microphone.HANDSET, voice.microphone)
+        waitSeconds(4)
+        finish()
+        viewModel.save()
+        waitSeconds(10)
+        assertEquals(RecordingMode.AUDIO, viewModel.recordings.value.single().mode)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+
+        turnCallModeOff()
+    }
+
+    @Test
+    fun anUnansweredCallRingsAgainLater() = runTest(dispatcher) {
+        setUpCallMode()
+        waitSeconds(480)
+        assertEquals(SessionState.Ringing, viewModel.state.value)
+
+        // Nobody came in 30 s: back to the invitation until the next call.
+        waitSeconds(30)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        waitSeconds(479)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        waitSeconds(1)
+        assertEquals(SessionState.Ringing, viewModel.state.value)
+
+        // Turned down with the back gesture.
+        viewModel.back()
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        turnCallModeOff()
+    }
+
+    @Test
+    fun aCallWaitsUntilTheBoothIsFree() = runTest(dispatcher) {
+        setUpCallMode()
+        waitSeconds(470)
+        viewModel.start()
+        waitSeconds(10)
+        assertEquals(SessionState.Menu, viewModel.state.value)
+
+        // The guest walks away at 500 s; the call tries again every minute and rings at 540 s.
+        waitSeconds(20)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        waitSeconds(39)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        waitSeconds(1)
+        assertEquals(SessionState.Ringing, viewModel.state.value)
+
+        viewModel.back()
+        turnCallModeOff()
+    }
+
+    @Test
+    fun withoutTheQuestionThereAreNoCalls() = runTest(dispatcher) {
+        setUpCallMode()
+        openHostPanel()
+        viewModel.showHostSection(HostSection.CALL)
+        viewModel.deleteHostVideo(HostVideo.CALL)
+        assertFalse(viewModel.settings.value.callMode)
+        viewModel.back()
+
+        waitSeconds(3_600)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
+    @Test
+    fun theHostCanTestTheCallWithCallModeOff() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.testCall()
+        assertEquals(SessionState.Idle, viewModel.state.value)
+        waitSeconds(3)
+        assertEquals(SessionState.Ringing, viewModel.state.value)
+
+        // Without a question video, answering goes straight to recording.
+        viewModel.answer()
+        runCurrent()
+        assertEquals(SessionState.Countdown(RecordingMode.AUDIO, 3), viewModel.state.value)
+    }
+
+    /** Call mode on with a question video, and a booth whose calls come at the earliest moment allowed. */
+    private fun TestScope.setUpCallMode() {
+        viewModel = SessionViewModel(
+            lights, voice, video, RecordingFiles(folder.root), repository, hostSettings, handset, random = LowestRandom,
+        )
+        runCurrent()
+        openHostPanel()
+        viewModel.showHostSection(HostSection.CALL)
+        // Picking the question switches call mode on.
+        viewModel.importHostVideo(HostVideo.CALL) { target -> target.writeText("question"); 20 }
+        runCurrent()
+        assertTrue(viewModel.settings.value.callMode)
+        viewModel.back()
+    }
+
+    /** Call mode rings forever, so it is switched off before the test finishes. */
+    private fun TestScope.turnCallModeOff() {
+        openHostPanel()
+        viewModel.updateSettings { it.copy(callMode = false) }
+        viewModel.back()
+    }
+
+    /** Always the lowest value, so the next call comes at exactly 80 % of the interval. */
+    private object LowestRandom : Random() {
+        override fun nextBits(bitCount: Int): Int = 0
     }
 
     private fun TestScope.startRecording(mode: RecordingMode) {

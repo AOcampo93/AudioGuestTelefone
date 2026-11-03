@@ -70,6 +70,12 @@
     <string name="welcome_skip">Pular</string>
     <string name="show_chip">Mensagens dos convidados</string>
     <string name="show_cta">Toque e deixe a sua</string>
+    <string name="call_incoming">Chamada recebida</string>
+    <string name="call_title">Estão te ligando</string>
+    <string name="call_body">Pegue o fone e toque para atender</string>
+    <string name="call_answer">Atender</string>
+    <string name="call_question_chip">Uma pergunta para você</string>
+    <string name="call_answer_now">Responder já</string>
     <string name="event_label_wedding">Casamento de</string>
     <string name="event_label_christmas">Natal com</string>
     <string name="event_label_birthday">Aniversário de</string>

@@ -19,6 +19,11 @@ class LightSceneTest {
     }
 
     @Test
+    fun aCallFlashesLikeAPhone() {
+        assertEquals(LightScene.RINGING, lightSceneFor(SessionState.Ringing))
+    }
+
+    @Test
     fun lastTenSecondsPulseAmber() {
         val state = SessionState.Capturing(RecordingMode.AUDIO, elapsedSeconds = 170, maxSeconds = 180)
         assertEquals(LightScene.LAST_SECONDS, lightSceneFor(state))

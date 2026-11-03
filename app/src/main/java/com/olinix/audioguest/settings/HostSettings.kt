@@ -66,6 +66,11 @@ data class HostSettings(
     /** Plays saved messages at random while nobody uses the booth. Needs [showMessages]. */
     val showMode: Boolean = false,
     val showAfterSeconds: Int = 60,
+    /** The booth rings now and then; whoever answers hears the host's question and answers it. */
+    val callMode: Boolean = false,
+    val callEveryMinutes: Int = 10,
+    /** How guests answer the call, when both kinds are allowed. */
+    val callAnswer: RecordingMode = RecordingMode.AUDIO,
 ) {
     /** Changing the type also brings back that type's default color. */
     fun withType(newType: EventType): HostSettings = copy(type = newType, accent = newType.defaultAccent)
@@ -86,6 +91,9 @@ data class HostSettings(
     /** Whether guests may leave, see and hear messages of this kind. */
     fun allows(mode: RecordingMode): Boolean = mode in allowed.modes
 
+    /** How the call is answered: the host's pick, unless that kind is not allowed any more. */
+    val callAnswerMode: RecordingMode get() = if (allows(callAnswer)) callAnswer else allowed.modes.first()
+
     companion object {
         /** Character limits from the mockup's "Campos por tipo de evento" table. */
         const val MAX_NAME = 14
@@ -97,5 +105,8 @@ data class HostSettings(
 
         /** "Empezar tras" choices for show mode. */
         val SHOW_DELAYS = listOf(30, 60, 180)
+
+        /** "Llamar cada" choices for call mode, in minutes. */
+        val CALL_INTERVALS = listOf(5, 10, 20)
     }
 }

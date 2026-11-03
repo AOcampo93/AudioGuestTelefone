@@ -6,7 +6,7 @@ import java.io.File
 enum class RecordingMode { AUDIO, VIDEO }
 
 /** The parts of the host panel, in the order of its tabs. */
-enum class HostSection { EVENT, WELCOME, GUESTS, MESSAGES }
+enum class HostSection { EVENT, WELCOME, CALL, GUESTS, MESSAGES }
 
 /** Why a session ended on the error screen. */
 enum class ErrorReason { MICROPHONE_UNAVAILABLE, CAMERA_UNAVAILABLE, RECORDING_FAILED }
@@ -26,25 +26,31 @@ sealed class SessionState {
     /** The host's welcome video plays before the menu; guests can skip it. */
     data object Welcome : SessionState()
 
+    /** Call mode: the booth rings until someone answers or it gives up. */
+    data object Ringing : SessionState()
+
+    /** Whoever answered hears the host's question; their answer is recorded next. */
+    data object CallIntro : SessionState()
+
     /**
      * 3, 2, 1 and "¡Ahora!" (number 0).
-     * [welcome] marks the host recording the welcome video from the panel, here and in the next two states.
+     * [hostVideo] marks the host recording one of their videos from the panel, here and in the next two states.
      */
-    data class Countdown(val mode: RecordingMode, val number: Int, val welcome: Boolean = false) : SessionState()
+    data class Countdown(val mode: RecordingMode, val number: Int, val hostVideo: HostVideo? = null) : SessionState()
 
     /** Recording in progress. Named Capturing so it does not clash with the gallery's Recording data class. */
     data class Capturing(
         val mode: RecordingMode,
         val elapsedSeconds: Int,
         val maxSeconds: Int,
-        val welcome: Boolean = false,
+        val hostVideo: HostVideo? = null,
     ) : SessionState() {
         val remainingSeconds: Int get() = maxSeconds - elapsedSeconds
         val progress: Float get() = elapsedSeconds.toFloat() / maxSeconds
     }
 
     /** Play back before saving: Save · Retry · Discard. [file] is still pending until saved. */
-    data class Review(val mode: RecordingMode, val durationSeconds: Int, val file: File, val welcome: Boolean = false) : SessionState()
+    data class Review(val mode: RecordingMode, val durationSeconds: Int, val file: File, val hostVideo: HostVideo? = null) : SessionState()
 
     /** "¡Gracias!" and automatic return to Idle. [shareFile] is the saved message, when the host lets guests share it. */
     data class Saved(val secondsLeft: Int, val totalSeconds: Int, val shareFile: File? = null) : SessionState()
@@ -68,12 +74,12 @@ sealed class SessionState {
     data class HostPanel(val section: HostSection = HostSection.EVENT) : SessionState()
 }
 
-/** Screens for the host rather than guests: the PIN pad, the panel and recording the welcome video. */
+/** Screens for the host rather than guests: the PIN pad, the panel and recording the host's videos. */
 val SessionState.isHostScreen: Boolean
     get() = when (this) {
         is SessionState.HostLogin, is SessionState.HostPanel -> true
-        is SessionState.Countdown -> welcome
-        is SessionState.Capturing -> welcome
-        is SessionState.Review -> welcome
+        is SessionState.Countdown -> hostVideo != null
+        is SessionState.Capturing -> hostVideo != null
+        is SessionState.Review -> hostVideo != null
         else -> false
     }

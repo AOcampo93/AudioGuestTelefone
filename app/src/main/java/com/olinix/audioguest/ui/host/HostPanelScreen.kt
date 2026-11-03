@@ -1,6 +1,5 @@
 package com.olinix.audioguest.ui.host
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,9 +40,8 @@ import com.olinix.audioguest.R
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.HostSection
+import com.olinix.audioguest.session.HostVideo
 import com.olinix.audioguest.session.SessionState
-import com.olinix.audioguest.session.WelcomeProblem
-import com.olinix.audioguest.session.WelcomeVideo
 import com.olinix.audioguest.settings.HostSettings
 import com.olinix.audioguest.ui.components.ConfirmDialog
 import com.olinix.audioguest.ui.components.PillButton
@@ -61,7 +59,7 @@ import com.olinix.audioguest.ui.theme.Taupe
 import java.io.File
 
 /**
- * Host panel: Evento, Bienvenida, Invitados and Mensajes. Every change is saved at once.
+ * Host panel: Evento, Bienvenida, Llamada, Invitados and Mensajes. Every change is saved at once.
  * At the bottom, "Salir de la app" lets the host close the kiosk.
  */
 @Composable
@@ -73,7 +71,9 @@ fun HostPanelScreen(
     onChange: ((HostSettings) -> HostSettings) -> Unit,
     onClose: () -> Unit,
     onExitApp: () -> Unit,
-    welcome: WelcomeActions,
+    welcome: HostVideoActions,
+    call: HostVideoActions,
+    onTestCall: () -> Unit,
     messages: MessageActions,
     modifier: Modifier = Modifier,
 ) {
@@ -111,14 +111,15 @@ fun HostPanelScreen(
                         HostSection.EVENT -> EventSection(settings, event, onChange, Modifier.padding(top = 32.dp))
                         HostSection.WELCOME -> WelcomeSection(
                             settings = settings,
-                            welcome = welcome.video,
-                            problem = welcome.problem,
-                            maxSeconds = welcome.maxSeconds,
+                            welcome = welcome.confirmingDelete { overlay = PanelOverlay.DeleteHostVideo(HostVideo.WELCOME) },
                             onChange = onChange,
-                            onRecord = welcome.onRecord,
-                            onImport = welcome.onImport,
-                            onDelete = { overlay = PanelOverlay.DeleteWelcome },
-                            onPlayingChange = welcome.onPlayingChange,
+                            modifier = Modifier.padding(top = 40.dp),
+                        )
+                        HostSection.CALL -> CallSection(
+                            settings = settings,
+                            question = call.confirmingDelete { overlay = PanelOverlay.DeleteHostVideo(HostVideo.CALL) },
+                            onChange = onChange,
+                            onTestCall = onTestCall,
                             modifier = Modifier.padding(top = 40.dp),
                         )
                         HostSection.GUESTS -> GuestsSection(settings, onChange, Modifier.padding(top = 36.dp))
@@ -140,16 +141,16 @@ fun HostPanelScreen(
                 onKeep = { overlay = null },
                 onConfirm = onExitApp,
             )
-            PanelOverlay.DeleteWelcome -> ConfirmDialog(
+            is PanelOverlay.DeleteHostVideo -> ConfirmDialog(
                 icon = R.drawable.ic_trash,
-                title = stringResource(R.string.host_welcome_delete_title),
-                body = stringResource(R.string.host_welcome_delete_body),
+                title = stringResource(if (shown.kind == HostVideo.WELCOME) R.string.host_welcome_delete_title else R.string.host_call_delete_title),
+                body = stringResource(if (shown.kind == HostVideo.WELCOME) R.string.host_welcome_delete_body else R.string.host_call_delete_body),
                 keepText = stringResource(R.string.host_delete_keep),
                 confirmText = stringResource(R.string.host_delete_confirm),
                 onKeep = { overlay = null },
                 onConfirm = {
                     overlay = null
-                    welcome.onDelete()
+                    (if (shown.kind == HostVideo.WELCOME) welcome else call).onDelete()
                 },
             )
             is PanelOverlay.DeleteMessage -> ConfirmDialog(
@@ -177,21 +178,10 @@ fun HostPanelScreen(
 /** What can cover the panel: a confirmation, or a message playing. */
 private sealed interface PanelOverlay {
     data object Exit : PanelOverlay
-    data object DeleteWelcome : PanelOverlay
+    data class DeleteHostVideo(val kind: HostVideo) : PanelOverlay
     data class DeleteMessage(val recording: Recording) : PanelOverlay
     data class PlayMessage(val recording: Recording) : PanelOverlay
 }
-
-/** What the "Bienvenida" section shows and can do, bundled so the panel's signature stays short. */
-class WelcomeActions(
-    val video: WelcomeVideo?,
-    val problem: WelcomeProblem?,
-    val maxSeconds: Int,
-    val onRecord: () -> Unit,
-    val onImport: (Uri) -> Unit,
-    val onDelete: () -> Unit,
-    val onPlayingChange: (Boolean) -> Unit,
-)
 
 /** "📞 Panel del anfitrión · Ana & Miguel", "Cerrar y volver" and the three section tabs. */
 @Composable
@@ -232,30 +222,31 @@ private fun Header(event: EventInfo, section: HostSection, onSection: (HostSecti
     }
 }
 
+/** Five tabs, each with its icon above the name so they fit side by side. */
 @Composable
 private fun Tabs(current: HostSection, onSection: (HostSection) -> Unit) {
-    val pill = RoundedCornerShape(percent = 50)
+    val shape = RoundedCornerShape(28.dp)
     Row(
-        modifier = Modifier.fillMaxWidth().clip(pill).background(TabTrack).padding(6.dp),
+        modifier = Modifier.fillMaxWidth().clip(shape).background(TabTrack).padding(6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         for (section in HostSection.entries) {
             val selected = section == current
             val color = if (selected) MaterialTheme.colorScheme.primary else Taupe
-            Row(
+            Column(
                 modifier = Modifier
                     .weight(1f)
-                    .height(72.dp)
-                    .clip(pill)
+                    .height(88.dp)
+                    .clip(RoundedCornerShape(22.dp))
                     .then(if (selected) Modifier.background(TabSelected) else Modifier)
                     .clickable(role = Role.Tab) { onSection(section) },
-                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(painterResource(section.icon), contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+                Icon(painterResource(section.icon), contentDescription = null, tint = color, modifier = Modifier.size(26.dp))
                 Text(
                     text = stringResource(section.tabLabel),
-                    fontSize = 21.sp,
+                    fontSize = 19.sp,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                     color = color,
                     style = MaterialTheme.typography.bodyMedium,
@@ -271,6 +262,7 @@ private fun SectionHeading(section: HostSection) {
     val (title, body) = when (section) {
         HostSection.EVENT -> R.string.host_event_title to R.string.host_event_body
         HostSection.WELCOME -> R.string.host_welcome_title to R.string.host_welcome_body
+        HostSection.CALL -> R.string.host_call_title to R.string.host_call_body
         HostSection.GUESTS -> R.string.host_guests_title to R.string.host_guests_body
         HostSection.MESSAGES -> R.string.host_messages_title to R.string.host_messages_body
     }
@@ -317,6 +309,7 @@ private val HostSection.icon: Int
     get() = when (this) {
         HostSection.EVENT -> R.drawable.ic_calendar
         HostSection.WELCOME -> R.drawable.ic_video
+        HostSection.CALL -> R.drawable.ic_phone
         HostSection.GUESTS -> R.drawable.ic_guests
         HostSection.MESSAGES -> R.drawable.ic_gallery
     }
@@ -325,6 +318,7 @@ private val HostSection.tabLabel: Int
     get() = when (this) {
         HostSection.EVENT -> R.string.host_tab_event
         HostSection.WELCOME -> R.string.host_tab_welcome
+        HostSection.CALL -> R.string.host_tab_call
         HostSection.GUESTS -> R.string.host_tab_guests
         HostSection.MESSAGES -> R.string.host_tab_messages
     }
@@ -341,7 +335,9 @@ private fun HostPanelPreview() {
             onChange = {},
             onClose = {},
             onExitApp = {},
-            welcome = WelcomeActions(null, null, 30, {}, {}, {}, {}),
+            welcome = HostVideoActions(null, null, 30, {}, {}, {}, {}),
+            call = HostVideoActions(null, null, 30, {}, {}, {}, {}),
+            onTestCall = {},
             messages = MessageActions(emptyList(), { File("") }, {}),
         )
     }
