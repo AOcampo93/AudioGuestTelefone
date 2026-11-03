@@ -22,15 +22,17 @@ adb shell am start -n com.olinix.audioguest/.MainActivity --ez require_handset f
 
 Guests cannot leave the app: it pins itself with Android's screen pinning, which the host confirms once when the app opens. If someone unpins it with the system gesture, the tablet locks. The host opens the panel by holding the top-right corner of the start screen for 3 seconds and typing the PIN (set in `SessionConfig`); from there "Salir de la app" unpins and closes it. While developing, add `--ez kiosk false` to skip the pinning.
 
-The panel has five sections, and every change is saved on the tablet at once (Jetpack DataStore):
+Everything is organized by event, so messages from different events never mix. Each event keeps its own setup, messages and videos (a Room table and its own folder); the booth records into the active one. The panel header opens the list of events, to create a new one, switch, export or delete a past one. On first start after upgrading, earlier messages and settings become the first event.
+
+The panel has five sections for the active event, and every change is saved on the tablet at once:
 
 - **Evento**: the event type (wedding, Christmas, birthday, company or other), the names it asks for, the date and the accent color, with a live preview of the start screen.
 - **Bienvenida**: an optional welcome video of up to 30 seconds, recorded with the tablet or picked from its files, that plays before the menu through the handset or the tablet speaker.
 - **Llamada**: call mode. Now and then, while nobody uses the booth, it rings like an old phone through the tablet speaker. Whoever answers (a tap or the handset button) hears the host's question video through the handset, and the answer is recorded right after it. Unanswered calls ring again later. Calls, including the test call, need the question video.
-- **Invitados**: the language of the whole app, panel included (Portuguese by default, Spanish or English), which messages guests may leave (voice, video or both), whether they can see the saved messages and share their own, and show mode, which plays saved messages through the speaker while nobody uses the booth.
-- **Mensajes**: every saved message, to play or delete. Guests cannot delete saved messages.
+- **Invitados**: the language of the whole app, panel included (Portuguese by default, Spanish or English), which messages guests may leave (voice, video or both), whether they can see the saved messages, whether they may ask to receive their own, and show mode, which plays saved messages through the speaker while nobody uses the booth.
+- **Mensajes**: every saved message, to play or delete (guests cannot delete saved messages), with who asked to receive it and a "sent" tick. "Exportar para o computador" copies the event to `Download/AudioGuestTelefone/<date> <hosts>/` with readable names and an `envios.csv` for Excel, ready to take by USB cable (on a Mac with OpenMTP); exporting again only adds what is new. "Partilhar tudo" shares those copies (Quick Share, Drive).
 
-Guests choose the microphone (handset or tablet) in the menu and where they hear saved messages (handset or speaker) in the player. After saving, "Compartir mi mensaje" opens Android's share sheet (Bluetooth, Quick Share, e-mail) with that one file.
+The tablet is meant to be dressed up as an old telephone, so guest screens never mention it: guests choose the microphone in the menu (handset or "hands-free", the tablet's own) and where they hear messages (handset or speaker) in the player and the review. After saving, "Receber a minha mensagem" lets them leave an e-mail or WhatsApp number, with a separate unticked box for news; the host sends the message by hand later. Nothing a guest does leaves the app.
 
 # Useful Websites
 
@@ -49,7 +51,7 @@ Guests choose the microphone (handset or tablet) in the menu and where they hear
 # Future Work
 
 - LED strip control through a WLED controller (`WledLightController`)
-- Background upload to a server and a QR code / email link for each guest
+- Sending each guest's message automatically: upload it to the Vokraft site and e-mail a link through its Resend account, or a QR code per guest
 - Full kiosk mode as Device Owner on a tablet dedicated to events (starts on boot, no unpin gesture)
 - Changing the host PIN from the panel
 
