@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
@@ -28,6 +29,8 @@ import com.olinix.audioguest.R
 import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.copyVideo
 import com.olinix.audioguest.camera.CameraFeed
+import com.olinix.audioguest.export.shareFiles
+import com.olinix.audioguest.session.ExportState
 import com.olinix.audioguest.session.HostVideo
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.session.SessionConfig
@@ -81,6 +84,8 @@ fun AudioGuestApp(
     val playerSound by viewModel.playerSound.collectAsStateWithLifecycle()
     val eventList by viewModel.eventList.collectAsStateWithLifecycle()
     val deliveryList by viewModel.deliveryList.collectAsStateWithLifecycle()
+    val exportState by viewModel.exportState.collectAsStateWithLifecycle()
+    val shareTitle = stringResource(R.string.host_export_share_title)
     val activeEventId by viewModel.activeEventId.collectAsStateWithLifecycle()
     val event = eventInfoOf(settings)
     val context = LocalContext.current
@@ -104,6 +109,15 @@ fun AudioGuestApp(
 
     // In a kiosk the system back gesture only steps back inside the guest flow.
     BackHandler { viewModel.back() }
+
+    // "Partilhar tudo": once the files are in the Download folder, the share sheet opens with them.
+    LaunchedEffect(exportState) {
+        val done = exportState as? ExportState.Done ?: return@LaunchedEffect
+        if (done.share) {
+            shareFiles(context, done.result.uris, shareTitle)
+            viewModel.shareLaunched()
+        }
+    }
 
     Box(
         Modifier
@@ -251,6 +265,8 @@ fun AudioGuestApp(
                         onDelete = viewModel::deleteRecording,
                         deliveries = deliveryList.associateBy { it.recordingId },
                         onMarkSent = viewModel::markDelivered,
+                        exportState = exportState?.takeIf { it.eventId == activeEventId },
+                        onExport = { share -> activeEventId?.let { viewModel.exportEvent(it, share) } },
                     ),
                     events = EventActions(
                         events = eventList,
@@ -258,6 +274,8 @@ fun AudioGuestApp(
                         onUse = viewModel::switchEvent,
                         onCreate = viewModel::createEvent,
                         onDelete = viewModel::deleteEvent,
+                        exportState = exportState,
+                        onExport = { id -> viewModel.exportEvent(id, share = false) },
                     ),
                 ) }
             }

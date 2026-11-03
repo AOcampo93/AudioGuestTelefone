@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
                     repository = LocalRecordingRepository(app.database.recordings()),
                     events = app.events,
                     deliveries = app.deliveries,
+                    exporter = app.exporter,
                     handsetConnected = Handset.connection(applicationContext),
                     config = config,
                 )

@@ -8,6 +8,8 @@ import com.olinix.audioguest.data.DeliveryRepository
 import com.olinix.audioguest.data.LocalDeliveryRepository
 import com.olinix.audioguest.data.EventRepository
 import com.olinix.audioguest.data.LocalEventRepository
+import com.olinix.audioguest.export.DownloadsExporter
+import com.olinix.audioguest.export.EventExporter
 import com.olinix.audioguest.settings.DeviceStore
 
 /** Objects that live as long as the app, so every screen and the session share the same ones. */
@@ -24,4 +26,6 @@ class AudioGuestApplication : Application() {
     val events: EventRepository by lazy { LocalEventRepository(database.events(), DeviceStore(this), storage) }
 
     val deliveries: DeliveryRepository by lazy { LocalDeliveryRepository(database.deliveries()) }
+
+    val exporter: EventExporter by lazy { DownloadsExporter(this) }
 }

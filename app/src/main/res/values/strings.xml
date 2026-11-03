@@ -309,4 +309,26 @@
         <item quantity="one">%1$d mensaje por enviar</item>
         <item quantity="other">%1$d mensajes por enviar</item>
     </plurals>
+
+    <!-- Exporting an event -->
+    <string name="host_export_cable">Exportar al computador</string>
+    <string name="host_export_share">Compartir todo</string>
+    <string name="host_export_share_title">Compartir los mensajes</string>
+    <string name="host_export_working">Exportando… puede tardar un minuto.</string>
+    <string name="host_export_cable_help">Para pasarlos al computador: conecta el cable USB, elige «Transferencia de archivos» en el aviso de la tablet y abre esa carpeta. En Mac hace falta la app gratuita OpenMTP.</string>
+    <string name="host_export_failed">No se pudo exportar. Revisa el espacio libre de la tablet.</string>
+    <string name="host_events_export">Exportar evento</string>
+    <string name="export_csv_header">archivo;tipo;duración;grabado;canal;contacto;novedades;enviado</string>
+    <string name="export_kind_voice">Voz</string>
+    <string name="export_kind_video">Video</string>
+    <string name="export_yes">sí</string>
+    <string name="export_no">no</string>
+    <plurals name="host_export_done">
+        <item quantity="one">%1$d mensaje listo</item>
+        <item quantity="other">%1$d mensajes listos</item>
+    </plurals>
+    <plurals name="host_export_new">
+        <item quantity="one">%1$d nuevo</item>
+        <item quantity="other">%1$d nuevos</item>
+    </plurals>
 </resources>

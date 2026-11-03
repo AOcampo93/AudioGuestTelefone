@@ -266,4 +266,26 @@
         <item quantity="one">%1$d message to send</item>
         <item quantity="other">%1$d messages to send</item>
     </plurals>
+
+    <!-- Exporting an event -->
+    <string name="host_export_cable">Export to a computer</string>
+    <string name="host_export_share">Share everything</string>
+    <string name="host_export_share_title">Share the messages</string>
+    <string name="host_export_working">Exporting… it may take a minute.</string>
+    <string name="host_export_cable_help">To copy them to a computer: plug in the USB cable, choose “File transfer” in the tablet’s notice and open that folder. On a Mac you need the free OpenMTP app.</string>
+    <string name="host_export_failed">Could not export. Check the tablet’s free space.</string>
+    <string name="host_events_export">Export event</string>
+    <string name="export_csv_header">file;type;length;recorded;channel;contact;news;sent</string>
+    <string name="export_kind_voice">Voice</string>
+    <string name="export_kind_video">Video</string>
+    <string name="export_yes">yes</string>
+    <string name="export_no">no</string>
+    <plurals name="host_export_done">
+        <item quantity="one">%1$d message ready</item>
+        <item quantity="other">%1$d messages ready</item>
+    </plurals>
+    <plurals name="host_export_new">
+        <item quantity="one">%1$d new</item>
+        <item quantity="other">%1$d new</item>
+    </plurals>
 </resources>

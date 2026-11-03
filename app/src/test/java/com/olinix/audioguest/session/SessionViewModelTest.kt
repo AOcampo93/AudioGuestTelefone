@@ -3,6 +3,7 @@ package com.olinix.audioguest.session
 import com.olinix.audioguest.audio.MessageRecorder
 import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.EventStorage
+import com.olinix.audioguest.audio.RecordingFiles
 import com.olinix.audioguest.audio.SoundOutput
 import com.olinix.audioguest.data.Delivery
 import com.olinix.audioguest.data.DeliveryChannel
@@ -12,6 +13,8 @@ import com.olinix.audioguest.data.EventRepository
 import com.olinix.audioguest.data.EventSummary
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.data.RecordingRepository
+import com.olinix.audioguest.export.EventExporter
+import com.olinix.audioguest.export.ExportResult
 import com.olinix.audioguest.lights.LightController
 import com.olinix.audioguest.lights.LightScene
 import com.olinix.audioguest.settings.Accent
@@ -42,6 +45,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.IOException
 import kotlin.random.Random
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -57,6 +61,7 @@ class SessionViewModelTest {
     private val repository = FakeRepository()
     private val events = FakeEvents()
     private val deliveries = FakeDeliveries()
+    private val exporter = FakeExporter()
     private val handset = MutableStateFlow(true)
     private lateinit var recordings: File
     private lateinit var viewModel: SessionViewModel
@@ -64,7 +69,7 @@ class SessionViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        viewModel = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, deliveries, handset)
+        viewModel = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, deliveries, exporter, handset)
         // The active event loads in the background; tests start once it has.
         dispatcher.scheduler.runCurrent()
         recordings = File(folder.root, "events/1/recordings")
@@ -391,7 +396,7 @@ class SessionViewModelTest {
     fun theEmulatorCanRunWithoutAHandset() = runTest(dispatcher) {
         handset.value = false
         val emulator = SessionViewModel(
-            lights, voice, video, EventStorage(folder.root), repository, events, deliveries, handset,
+            lights, voice, video, EventStorage(folder.root), repository, events, deliveries, exporter, handset,
             SessionConfig(requireHandset = false),
         )
         runCurrent()
@@ -493,7 +498,7 @@ class SessionViewModelTest {
     @Test
     fun savedSettingsAreLoadedAtStart() = runTest(dispatcher) {
         events.stored.value = listOf(Event(id = 1, createdAt = 0, settings = HostSettings(type = EventType.BIRTHDAY, birthdayName = "Lucía")))
-        val restarted = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, deliveries, handset)
+        val restarted = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, deliveries, exporter, handset)
         runCurrent()
         assertEquals("Lucía", restarted.settings.value.hosts)
     }
@@ -900,6 +905,67 @@ class SessionViewModelTest {
         assertEquals("Ana", events.stored.value.single { it.id == 1L }.settings.name1)
     }
 
+    @Test
+    fun theHostExportsOneEventWithItsRequests() = runTest(dispatcher) {
+        saveVoiceMessage()
+        viewModel.askForDelivery()
+        startRecording(RecordingMode.AUDIO)
+        finish()
+        viewModel.save()
+        runCurrent()
+        viewModel.askForDelivery()
+        viewModel.submitDelivery(DeliveryChannel.EMAIL, "ana@mail.pt", wantsNews = true)
+        waitSeconds(8)
+
+        openHostPanel()
+        viewModel.createEvent()
+        runCurrent()
+        viewModel.back()
+        saveVoiceMessage()
+
+        // Exporting the first event from the list takes only its own two messages and its request.
+        openHostPanel()
+        viewModel.showHostSection(HostSection.EVENTS)
+        viewModel.exportEvent(1, share = false)
+        assertEquals(ExportState.Working(1), viewModel.exportState.value)
+        runCurrent()
+        assertEquals(listOf(1L, 1L), exporter.recordings.map { it.eventId })
+        assertEquals(listOf("ana@mail.pt"), exporter.deliveries.map { it.address })
+        val done = viewModel.exportState.value as ExportState.Done
+        assertEquals(2, done.result.total)
+        assertFalse(done.share)
+
+        // The result belongs to this visit to the panel.
+        viewModel.back()
+        assertNull(viewModel.exportState.value)
+    }
+
+    @Test
+    fun sharingEverythingOpensTheShareSheetOnce() = runTest(dispatcher) {
+        saveVoiceMessage()
+        openHostPanel()
+        viewModel.showHostSection(HostSection.MESSAGES)
+        viewModel.exportEvent(1, share = true)
+        runCurrent()
+        assertTrue((viewModel.exportState.value as ExportState.Done).share)
+
+        viewModel.shareLaunched()
+        assertFalse((viewModel.exportState.value as ExportState.Done).share)
+    }
+
+    @Test
+    fun aFailedExportSaysSoAndOnlyTheHostCanExport() = runTest(dispatcher) {
+        saveVoiceMessage()
+        viewModel.exportEvent(1, share = false)
+        assertNull(viewModel.exportState.value)
+
+        exporter.fails = true
+        openHostPanel()
+        viewModel.exportEvent(1, share = false)
+        runCurrent()
+        assertEquals(ExportState.Failed(1), viewModel.exportState.value)
+    }
+
     private fun TestScope.saveVoiceMessage() {
         startRecording(RecordingMode.AUDIO)
         finish()
@@ -910,7 +976,7 @@ class SessionViewModelTest {
     /** Call mode on with a question video, and a booth whose calls come at the earliest moment allowed. */
     private fun TestScope.setUpCallMode() {
         viewModel = SessionViewModel(
-            lights, voice, video, EventStorage(folder.root), repository, events, deliveries, handset, random = LowestRandom,
+            lights, voice, video, EventStorage(folder.root), repository, events, deliveries, exporter, handset, random = LowestRandom,
         )
         runCurrent()
         openHostPanel()
@@ -980,6 +1046,22 @@ class SessionViewModelTest {
 
         override suspend fun delete(recording: Recording) {
             saved.value = saved.value.filterNot { it.id == recording.id }
+        }
+    }
+
+    /** Remembers what it was asked to export instead of writing to the Download folder. */
+    private class FakeExporter : EventExporter {
+        var fails = false
+        var recordings: List<Recording> = emptyList()
+            private set
+        var deliveries: List<Delivery> = emptyList()
+            private set
+
+        override suspend fun export(event: Event, recordings: List<Recording>, deliveries: List<Delivery>, files: RecordingFiles): ExportResult {
+            if (fails) throw IOException("Storage full")
+            this.recordings = recordings
+            this.deliveries = deliveries
+            return ExportResult(folder = "Download/AudioGuestTelefone/test", total = recordings.size, copied = recordings.size, uris = recordings.map { it.fileName })
         }
     }
 

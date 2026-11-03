@@ -272,4 +272,28 @@
         <item quantity="many">%1$d mensagens por enviar</item>
         <item quantity="other">%1$d mensagens por enviar</item>
     </plurals>
+
+    <!-- Exporting an event -->
+    <string name="host_export_cable">Exportar para o computador</string>
+    <string name="host_export_share">Partilhar tudo</string>
+    <string name="host_export_share_title">Partilhar as mensagens</string>
+    <string name="host_export_working">A exportar… pode demorar um minuto.</string>
+    <string name="host_export_cable_help">Para os passar para o computador: ligue o cabo USB, escolha “Transferência de ficheiros” no aviso do tablet e abra essa pasta. No Mac é preciso a aplicação gratuita OpenMTP.</string>
+    <string name="host_export_failed">Não foi possível exportar. Verifique o espaço livre do tablet.</string>
+    <string name="host_events_export">Exportar evento</string>
+    <string name="export_csv_header">ficheiro;tipo;duração;gravado;canal;contacto;novidades;enviado</string>
+    <string name="export_kind_voice">Voz</string>
+    <string name="export_kind_video">Vídeo</string>
+    <string name="export_yes">sim</string>
+    <string name="export_no">não</string>
+    <plurals name="host_export_done">
+        <item quantity="one">%1$d mensagem pronta</item>
+        <item quantity="many">%1$d mensagens prontas</item>
+        <item quantity="other">%1$d mensagens prontas</item>
+    </plurals>
+    <plurals name="host_export_new">
+        <item quantity="one">%1$d novo</item>
+        <item quantity="many">%1$d novos</item>
+        <item quantity="other">%1$d novos</item>
+    </plurals>
 </resources>

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
 import com.olinix.audioguest.data.EventSummary
+import com.olinix.audioguest.session.ExportState
 import com.olinix.audioguest.ui.components.PillButton
 import com.olinix.audioguest.ui.components.PillStyle
 import com.olinix.audioguest.ui.eventInfoOf
@@ -44,6 +45,9 @@ class EventActions(
     val onCreate: () -> Unit,
     /** Deletes an event. The panel asks the host to confirm first. */
     val onDelete: (Long) -> Unit,
+    val exportState: ExportState? = null,
+    /** Copies an event's messages to the Download folder, for the cable. */
+    val onExport: (Long) -> Unit = {},
 )
 
 /**
@@ -60,20 +64,30 @@ fun EventsSection(actions: EventActions, onAskDelete: (EventSummary) -> Unit, mo
             height = 72.dp,
             modifier = Modifier.fillMaxWidth(),
         )
+        actions.exportState?.let { ExportStatusCard(it) }
         for (summary in actions.events) {
             EventRow(
                 summary = summary,
                 active = summary.event.id == actions.activeId,
+                exporting = actions.exportState is ExportState.Working,
                 onUse = { actions.onUse(summary.event.id) },
+                onExport = { actions.onExport(summary.event.id) },
                 onDelete = { onAskDelete(summary) },
             )
         }
     }
 }
 
-/** "Boda de Ana & Miguel · 14 de junio de 2027 · 12 mensajes" with "Activo", or "Usar" and the bin. */
+/** "Boda de Ana & Miguel · 14 de junio de 2027 · 12 mensajes", its export button, then "Activo", or "Usar" and the bin. */
 @Composable
-private fun EventRow(summary: EventSummary, active: Boolean, onUse: () -> Unit, onDelete: () -> Unit) {
+private fun EventRow(
+    summary: EventSummary,
+    active: Boolean,
+    exporting: Boolean,
+    onUse: () -> Unit,
+    onExport: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val accent = MaterialTheme.colorScheme.primary
     val info = eventInfoOf(summary.event.settings)
     val shape = RoundedCornerShape(24.dp)
@@ -95,6 +109,23 @@ private fun EventRow(summary: EventSummary, active: Boolean, onUse: () -> Unit, 
                 color = Sand,
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+        if (summary.messageCount > 0) {
+            Box(
+                Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .border(1.5.dp, Ivory.copy(alpha = 0.3f), CircleShape)
+                    .clickable(enabled = !exporting, onClick = onExport),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_upload),
+                    contentDescription = stringResource(R.string.host_events_export),
+                    tint = Ivory,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
         }
         if (active) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

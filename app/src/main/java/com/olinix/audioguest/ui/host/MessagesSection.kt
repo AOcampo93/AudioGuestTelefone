@@ -43,6 +43,7 @@ import com.olinix.audioguest.audio.rememberVideoFrame
 import com.olinix.audioguest.data.Delivery
 import com.olinix.audioguest.data.DeliveryChannel
 import com.olinix.audioguest.data.Recording
+import com.olinix.audioguest.session.ExportState
 import com.olinix.audioguest.session.RecordingMode
 import com.olinix.audioguest.settings.HostSettings
 import com.olinix.audioguest.ui.components.AccentCircle
@@ -73,6 +74,9 @@ class MessageActions(
     val deliveries: Map<Long, Delivery> = emptyMap(),
     /** Ticks a request off as sent by hand, or back to "to send". */
     val onMarkSent: (Long, Boolean) -> Unit = { _, _ -> },
+    /** The export of this event, if one was started during this visit to the panel. */
+    val exportState: ExportState? = null,
+    val onExport: (share: Boolean) -> Unit = {},
 )
 
 /**
@@ -108,6 +112,14 @@ fun LazyListScope.messageItems(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
+            if (recordings.isNotEmpty()) {
+                ExportButtons(
+                    working = messages.exportState is ExportState.Working,
+                    onExport = messages.onExport,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+            }
+            messages.exportState?.let { ExportStatusCard(it, Modifier.padding(top = 8.dp)) }
         }
     }
     if (recordings.isEmpty()) {

@@ -15,6 +15,7 @@ import com.olinix.audioguest.data.EventRepository
 import com.olinix.audioguest.data.EventSummary
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.data.RecordingRepository
+import com.olinix.audioguest.export.EventExporter
 import com.olinix.audioguest.lights.LightController
 import com.olinix.audioguest.lights.LightScene
 import com.olinix.audioguest.lights.lightSceneFor
@@ -29,10 +30,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.IOException
 import java.time.LocalDate
 import kotlin.random.Random
 
@@ -50,6 +53,7 @@ class SessionViewModel(
     private val repository: RecordingRepository,
     private val events: EventRepository,
     private val deliveries: DeliveryRepository,
+    private val exporter: EventExporter,
     /** Whether the handset is plugged in, updated as it changes. */
     handsetConnected: Flow<Boolean>,
     private val config: SessionConfig = SessionConfig(),
@@ -79,6 +83,11 @@ class SessionViewModel(
     val deliveryList: StateFlow<List<Delivery>> = _activeEventId.filterNotNull()
         .flatMapLatest { id -> deliveries.deliveries(id) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val _exportState = MutableStateFlow<ExportState?>(null)
+
+    /** The last export started from the panel, until the host leaves it. */
+    val exportState: StateFlow<ExportState?> = _exportState.asStateFlow()
 
     /** Every event, newest first, for the panel. */
     val eventList: StateFlow<List<EventSummary>> = events.summaries.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -418,6 +427,40 @@ class SessionViewModel(
         }
     }
 
+    /**
+     * "Exportar" or "Partilhar tudo": copies an event's messages and envios.csv to the Download
+     * folder. With [share], the panel then opens the share sheet with them.
+     */
+    fun exportEvent(eventId: Long, share: Boolean) {
+        if (_state.value !is SessionState.HostPanel || _exportState.value is ExportState.Working) return
+        _exportState.value = ExportState.Working(eventId)
+        restartInactivityTimer()
+        viewModelScope.launch {
+            val event = events.get(eventId)
+            _exportState.value = try {
+                checkNotNull(event)
+                val result = exporter.export(
+                    event = event,
+                    recordings = repository.recordings(eventId).first(),
+                    deliveries = deliveries.deliveries(eventId).first(),
+                    files = storage.filesFor(eventId),
+                )
+                ExportState.Done(eventId, result, share)
+            } catch (e: IOException) {
+                ExportState.Failed(eventId)
+            } catch (e: IllegalStateException) {
+                ExportState.Failed(eventId)
+            }
+            restartInactivityTimer()
+        }
+    }
+
+    /** The share sheet opened; the result stays on screen without opening it again. */
+    fun shareLaunched() {
+        val done = _exportState.value as? ExportState.Done ?: return
+        _exportState.value = done.copy(share = false)
+    }
+
     /** The host ticked a request in Mensajes as sent, or back to "to send". */
     fun markDelivered(deliveryId: Long, sent: Boolean) {
         if (_state.value !is SessionState.HostPanel) return
@@ -661,6 +704,8 @@ class SessionViewModel(
 
     private fun moveTo(next: SessionState) {
         _state.value = next
+        // A finished export's result belongs to this visit to the panel.
+        if (next !is SessionState.HostPanel && _exportState.value !is ExportState.Working) _exportState.value = null
 
         // The countdown blinks once per number, so it is sent every second;
         // the other scenes are only sent when they change.
@@ -674,7 +719,8 @@ class SessionViewModel(
 
     private fun restartInactivityTimer() {
         inactivityJob?.cancel()
-        if (mediaPlaying) return
+        // Nobody is sent back to the start while a message plays or files are being copied.
+        if (mediaPlaying || _exportState.value is ExportState.Working) return
         val state = _state.value
         inactivityJob = when {
             expiresWhenUnattended(state) -> viewModelScope.launch {
