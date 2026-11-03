@@ -26,8 +26,8 @@ The panel has five sections, and every change is saved on the tablet at once (Je
 
 - **Evento**: the event type (wedding, Christmas, birthday, company or other), the names it asks for, the date and the accent color, with a live preview of the start screen.
 - **Bienvenida**: an optional welcome video of up to 30 seconds, recorded with the tablet or picked from its files, that plays before the menu through the handset or the tablet speaker.
-- **Llamada**: call mode. Now and then, while nobody uses the booth, it rings like an old phone through the tablet speaker. Whoever answers (a tap or the handset button) hears the host's question video through the handset and records an answer. Unanswered calls ring again later.
-- **Invitados**: the language of the guest screens (Portuguese, Spanish or English), which messages guests may leave (voice, video or both), whether they can see the saved messages and share their own, and show mode, which plays saved messages through the speaker while nobody uses the booth.
+- **Llamada**: call mode. Now and then, while nobody uses the booth, it rings like an old phone through the tablet speaker. Whoever answers (a tap or the handset button) hears the host's question video through the handset, and the answer is recorded right after it. Unanswered calls ring again later. Calls, including the test call, need the question video.
+- **Invitados**: the language of the whole app, panel included (Portuguese by default, Spanish or English), which messages guests may leave (voice, video or both), whether they can see the saved messages and share their own, and show mode, which plays saved messages through the speaker while nobody uses the booth.
 - **Mensajes**: every saved message, to play or delete. Guests cannot delete saved messages.
 
 Guests choose the microphone (handset or tablet) in the menu and where they hear saved messages (handset or speaker) in the player. After saving, "Compartir mi mensaje" opens Android's share sheet (Bluetooth, Quick Share, e-mail) with that one file.
