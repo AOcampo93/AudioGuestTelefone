@@ -12,15 +12,15 @@
     <string name="video_message">Mensaje de video</string>
     <string name="speak_into_handset">Habla por el auricular</string>
     <string name="look_here">Mira aquí</string>
-    <string name="speak_into_tablet">Habla hacia la tablet</string>
+    <string name="speak_hands_free">Habla cerca del teléfono</string>
     <string name="microphone">Micrófono</string>
     <string name="route_handset">Auricular</string>
-    <string name="route_tablet">Tablet</string>
+    <string name="route_hands_free">Manos libres</string>
     <string name="route_speaker">Altavoz</string>
 
     <!-- Menu -->
     <string name="menu_title">¿Qué quieres dejar?</string>
-    <string name="menu_video_hint">Mira a la cámara de la tablet</string>
+    <string name="menu_video_hint">Mira a la cámara</string>
     <string name="menu_up_to_minutes">hasta %1$d min</string>
     <string name="menu_gallery">Ver grabaciones</string>
     <string name="menu_gallery_hint">Escucha y mira los mensajes</string>

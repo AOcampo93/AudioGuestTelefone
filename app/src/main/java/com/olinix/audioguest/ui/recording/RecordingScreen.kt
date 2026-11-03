@@ -138,17 +138,17 @@ private fun VoiceRecording(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val tablet = microphone == Microphone.TABLET
+            val handsFree = microphone == Microphone.TABLET
             Box(Modifier.size(56.dp).border(1.5.dp, accent, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(
-                    painterResource(if (tablet) R.drawable.ic_tablet else R.drawable.ic_phone),
+                    painterResource(if (handsFree) R.drawable.ic_speaker else R.drawable.ic_phone),
                     contentDescription = null,
                     tint = accent,
                     modifier = Modifier.size(26.dp),
                 )
             }
             Text(
-                text = stringResource(if (tablet) R.string.speak_into_tablet else R.string.speak_into_handset),
+                text = stringResource(if (handsFree) R.string.speak_hands_free else R.string.speak_into_handset),
                 fontSize = 28.sp,
                 color = IvorySoft,
                 style = MaterialTheme.typography.bodyLarge,
@@ -277,7 +277,7 @@ private fun VideoClock(state: SessionState.Capturing, lastSeconds: Boolean) {
     }
 }
 
-/** Handset or tablet icon plus five tiny bars: proof that the sound comes from the chosen microphone. */
+/** Handset or hands-free icon plus five tiny bars: proof that the sound comes from the chosen microphone. */
 @Composable
 private fun MicrophoneMeter(level: () -> Float, microphone: Microphone) {
     val accent = MaterialTheme.colorScheme.primary
@@ -291,7 +291,7 @@ private fun MicrophoneMeter(level: () -> Float, microphone: Microphone) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            painterResource(if (microphone == Microphone.TABLET) R.drawable.ic_tablet else R.drawable.ic_phone),
+            painterResource(if (microphone == Microphone.TABLET) R.drawable.ic_speaker else R.drawable.ic_phone),
             contentDescription = null,
             tint = accent,
             modifier = Modifier.size(26.dp),

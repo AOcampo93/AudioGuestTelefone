@@ -72,13 +72,16 @@ fun <T> ChoiceToggle(choices: List<ToggleChoice<T>>, selected: T, onSelect: (T) 
     }
 }
 
-/** "📞 Auricular | ▭ Tablet": the microphone a guest records with. */
+/**
+ * "📞 Auricular | 🔊 Manos libres": the microphone a guest records with. The tablet is dressed up
+ * as an old telephone, so its own microphone is offered as the phone's hands-free one.
+ */
 @Composable
 fun MicrophoneToggle(selected: Microphone, onSelect: (Microphone) -> Unit, modifier: Modifier = Modifier) {
     ChoiceToggle(
         choices = listOf(
             ToggleChoice(Microphone.HANDSET, R.drawable.ic_phone, stringResource(R.string.route_handset)),
-            ToggleChoice(Microphone.TABLET, R.drawable.ic_tablet, stringResource(R.string.route_tablet)),
+            ToggleChoice(Microphone.TABLET, R.drawable.ic_speaker, stringResource(R.string.route_hands_free)),
         ),
         selected = selected,
         onSelect = onSelect,

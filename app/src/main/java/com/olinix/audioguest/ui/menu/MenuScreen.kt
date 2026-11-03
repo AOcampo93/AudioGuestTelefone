@@ -91,13 +91,13 @@ fun MenuScreen(
             verticalArrangement = Arrangement.spacedBy(28.dp),
         ) {
             if (RecordingMode.AUDIO in modes) {
-                val tablet = microphone == Microphone.TABLET
+                val handsFree = microphone == Microphone.TABLET
                 ModeCard(
                     icon = R.drawable.ic_mic,
                     limit = stringResource(R.string.menu_up_to_minutes, config.maxAudioSeconds / 60),
                     title = stringResource(R.string.voice_message),
-                    hintIcon = if (tablet) R.drawable.ic_tablet else R.drawable.ic_phone,
-                    hint = stringResource(if (tablet) R.string.speak_into_tablet else R.string.speak_into_handset),
+                    hintIcon = if (handsFree) R.drawable.ic_speaker else R.drawable.ic_phone,
+                    hint = stringResource(if (handsFree) R.string.speak_hands_free else R.string.speak_into_handset),
                     onClick = { onChoose(RecordingMode.AUDIO) },
                 )
             }

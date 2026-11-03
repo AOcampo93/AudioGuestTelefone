@@ -93,7 +93,7 @@ fun CountdownScreen(state: SessionState.Countdown, modifier: Modifier = Modifier
                         state.number > 0 && isVideo -> R.string.countdown_look_at_camera
                         state.number > 0 -> R.string.countdown_get_ready
                         isVideo -> R.string.countdown_now_video
-                        microphone == Microphone.TABLET -> R.string.speak_into_tablet
+                        microphone == Microphone.TABLET -> R.string.speak_hands_free
                         else -> R.string.speak_into_handset
                     }
                 ),

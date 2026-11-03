@@ -8,13 +8,13 @@
     <string name="video_message">Video message</string>
     <string name="speak_into_handset">Speak into the handset</string>
     <string name="look_here">Look here</string>
-    <string name="speak_into_tablet">Speak towards the tablet</string>
+    <string name="speak_hands_free">Speak close to the phone</string>
     <string name="microphone">Microphone</string>
     <string name="route_handset">Handset</string>
-    <string name="route_tablet">Tablet</string>
+    <string name="route_hands_free">Hands-free</string>
     <string name="route_speaker">Speaker</string>
     <string name="menu_title">What would you like to leave?</string>
-    <string name="menu_video_hint">Look at the tablet camera</string>
+    <string name="menu_video_hint">Look at the camera</string>
     <string name="menu_up_to_minutes">up to %1$d min</string>
     <string name="menu_gallery">See messages</string>
     <string name="menu_gallery_hint">Listen to and watch the messages</string>
