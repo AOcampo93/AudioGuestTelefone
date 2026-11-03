@@ -26,7 +26,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.olinix.audioguest.audio.Handset
 import com.olinix.audioguest.audio.HandsetAudioRecorder
-import com.olinix.audioguest.audio.RecordingFiles
 import com.olinix.audioguest.data.LocalRecordingRepository
 import com.olinix.audioguest.lights.NoOpLightController
 import com.olinix.audioguest.session.SessionConfig
@@ -61,9 +60,9 @@ class MainActivity : ComponentActivity() {
                     lights = NoOpLightController(),
                     voiceRecorder = HandsetAudioRecorder(applicationContext),
                     videoRecorder = app.camera,
-                    files = RecordingFiles(filesDir),
+                    storage = app.storage,
                     repository = LocalRecordingRepository(app.database.recordings()),
-                    hostSettings = app.settings,
+                    events = app.events,
                     handsetConnected = Handset.connection(applicationContext),
                     config = config,
                 )

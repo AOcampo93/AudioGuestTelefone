@@ -2,8 +2,11 @@ package com.olinix.audioguest.session
 
 import com.olinix.audioguest.audio.MessageRecorder
 import com.olinix.audioguest.audio.Microphone
-import com.olinix.audioguest.audio.RecordingFiles
+import com.olinix.audioguest.audio.EventStorage
 import com.olinix.audioguest.audio.SoundOutput
+import com.olinix.audioguest.data.Event
+import com.olinix.audioguest.data.EventRepository
+import com.olinix.audioguest.data.EventSummary
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.data.RecordingRepository
 import com.olinix.audioguest.lights.LightController
@@ -12,10 +15,11 @@ import com.olinix.audioguest.settings.Accent
 import com.olinix.audioguest.settings.AllowedMessages
 import com.olinix.audioguest.settings.EventType
 import com.olinix.audioguest.settings.HostSettings
-import com.olinix.audioguest.settings.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -27,6 +31,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -47,7 +52,7 @@ class SessionViewModelTest {
     private val voice = FakeRecorder()
     private val video = FakeRecorder()
     private val repository = FakeRepository()
-    private val hostSettings = FakeSettings()
+    private val events = FakeEvents()
     private val handset = MutableStateFlow(true)
     private lateinit var recordings: File
     private lateinit var viewModel: SessionViewModel
@@ -55,8 +60,10 @@ class SessionViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        viewModel = SessionViewModel(lights, voice, video, RecordingFiles(folder.root), repository, hostSettings, handset)
-        recordings = File(folder.root, "recordings")
+        viewModel = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, handset)
+        // The active event loads in the background; tests start once it has.
+        dispatcher.scheduler.runCurrent()
+        recordings = File(folder.root, "events/1/recordings")
     }
 
     @After
@@ -337,7 +344,7 @@ class SessionViewModelTest {
     fun theEmulatorCanRunWithoutAHandset() = runTest(dispatcher) {
         handset.value = false
         val emulator = SessionViewModel(
-            lights, voice, video, RecordingFiles(folder.root), repository, hostSettings, handset,
+            lights, voice, video, EventStorage(folder.root), repository, events, handset,
             SessionConfig(requireHandset = false),
         )
         runCurrent()
@@ -364,9 +371,9 @@ class SessionViewModelTest {
         assertEquals(LightScene.ERROR, lights.shown.last())
     }
 
-    private fun voice(id: Long, seconds: Int = 30) = Recording(id, RecordingMode.AUDIO, "voice-$id.m4a", seconds, savedAt = id)
+    private fun voice(id: Long, seconds: Int = 30) = Recording(id, 1, RecordingMode.AUDIO, "voice-$id.m4a", seconds, savedAt = id)
 
-    private fun video(id: Long) = Recording(id, RecordingMode.VIDEO, "video-$id.mp4", 30, savedAt = id)
+    private fun video(id: Long) = Recording(id, 1, RecordingMode.VIDEO, "video-$id.mp4", 30, savedAt = id)
 
     private fun savedFiles(): List<File> =
         recordings.listFiles()?.filterNot { it.name.startsWith("pending-") }.orEmpty()
@@ -428,7 +435,7 @@ class SessionViewModelTest {
         viewModel.updateSettings { it.withType(EventType.CHRISTMAS) }
         assertEquals(Accent.RED, viewModel.settings.value.accent)
         runCurrent()
-        assertEquals(EventType.CHRISTMAS, hostSettings.saved?.type)
+        assertEquals(EventType.CHRISTMAS, events.activeSettings?.type)
 
         // Outside the panel nothing can change the settings.
         viewModel.back()
@@ -438,8 +445,8 @@ class SessionViewModelTest {
 
     @Test
     fun savedSettingsAreLoadedAtStart() = runTest(dispatcher) {
-        hostSettings.saved = HostSettings(type = EventType.BIRTHDAY, birthdayName = "Lucía")
-        val restarted = SessionViewModel(lights, voice, video, RecordingFiles(folder.root), repository, hostSettings, handset)
+        events.stored.value = listOf(Event(id = 1, createdAt = 0, settings = HostSettings(type = EventType.BIRTHDAY, birthdayName = "Lucía")))
+        val restarted = SessionViewModel(lights, voice, video, EventStorage(folder.root), repository, events, handset)
         runCurrent()
         assertEquals("Lucía", restarted.settings.value.hosts)
     }
@@ -458,8 +465,8 @@ class SessionViewModelTest {
     @Test
     fun showModePlaysMessagesWhileNobodyComes() = runTest(dispatcher) {
         repository.saved.value = listOf(
-            Recording(1, RecordingMode.AUDIO, "voice-1.m4a", durationSeconds = 40, savedAt = 1),
-            Recording(2, RecordingMode.VIDEO, "video-2.mp4", durationSeconds = 25, savedAt = 2),
+            Recording(1, 1, RecordingMode.AUDIO, "voice-1.m4a", durationSeconds = 40, savedAt = 1),
+            Recording(2, 1, RecordingMode.VIDEO, "video-2.mp4", durationSeconds = 25, savedAt = 2),
         )
         openHostPanel()
         viewModel.updateSettings { it.copy(showMode = true, showAfterSeconds = 30) }
@@ -491,7 +498,7 @@ class SessionViewModelTest {
 
     @Test
     fun showModeNeedsVisibleMessages() = runTest(dispatcher) {
-        repository.saved.value = listOf(Recording(1, RecordingMode.AUDIO, "voice-1.m4a", durationSeconds = 40, savedAt = 1))
+        repository.saved.value = listOf(Recording(1, 1, RecordingMode.AUDIO, "voice-1.m4a", durationSeconds = 40, savedAt = 1))
         openHostPanel()
         viewModel.updateSettings { it.copy(showMode = true, showMessages = false, showAfterSeconds = 30) }
         viewModel.back()
@@ -514,7 +521,7 @@ class SessionViewModelTest {
         viewModel.save()
         assertEquals(SessionState.HostPanel(HostSection.WELCOME), viewModel.state.value)
         assertTrue(viewModel.settings.value.welcomeVideo)
-        assertTrue(File(folder.root, "welcome.mp4").exists())
+        assertTrue(File(folder.root, "events/1/welcome.mp4").exists())
         assertTrue(repository.saved.value.isEmpty())
 
         viewModel.back()
@@ -535,7 +542,7 @@ class SessionViewModelTest {
         viewModel.importHostVideo(HostVideo.WELCOME) { target -> target.writeText("video"); 18 }
         runCurrent()
         assertNull(viewModel.videoProblems.value[HostVideo.WELCOME])
-        assertEquals(1, viewModel.hostVideos.value[HostVideo.WELCOME]?.version)
+        assertNotNull(viewModel.hostVideos.value[HostVideo.WELCOME])
 
         viewModel.deleteHostVideo(HostVideo.WELCOME)
         assertNull(viewModel.hostVideos.value[HostVideo.WELCOME])
@@ -773,10 +780,90 @@ class SessionViewModelTest {
         assertEquals(Microphone.HANDSET, video.microphone)
     }
 
+    @Test
+    fun eachEventKeepsItsOwnMessages() = runTest(dispatcher) {
+        saveVoiceMessage()
+        val first = viewModel.recordings.value.single()
+
+        // A new event starts empty and opens at its names and date.
+        openHostPanel()
+        viewModel.showHostSection(HostSection.EVENTS)
+        viewModel.createEvent()
+        runCurrent()
+        assertEquals(SessionState.HostPanel(HostSection.EVENT), viewModel.state.value)
+        assertEquals(2L, viewModel.activeEventId.value)
+        assertTrue(viewModel.recordings.value.isEmpty())
+
+        viewModel.back()
+        saveVoiceMessage()
+        val second = viewModel.recordings.value.single()
+        assertEquals(2L, second.eventId)
+        assertTrue(File(folder.root, "events/2/recordings/${second.fileName}").exists())
+
+        // Back in the first event, only its own message is there.
+        openHostPanel()
+        viewModel.switchEvent(1)
+        runCurrent()
+        assertEquals(listOf(first), viewModel.recordings.value)
+    }
+
+    @Test
+    fun hostVideosBelongToTheirEvent() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.importHostVideo(HostVideo.WELCOME) { target -> target.writeText("hello"); 10 }
+        runCurrent()
+        assertTrue(viewModel.settings.value.welcomeVideo)
+
+        viewModel.createEvent()
+        runCurrent()
+        assertTrue(viewModel.hostVideos.value.isEmpty())
+        assertFalse(viewModel.settings.value.welcomeVideo)
+
+        viewModel.switchEvent(1)
+        runCurrent()
+        assertTrue(HostVideo.WELCOME in viewModel.hostVideos.value)
+    }
+
+    @Test
+    fun onlyPastEventsCanBeDeleted() = runTest(dispatcher) {
+        saveVoiceMessage()
+        openHostPanel()
+        viewModel.createEvent()
+        runCurrent()
+
+        // The active event stays, whatever the panel asks.
+        viewModel.deleteEvent(2)
+        runCurrent()
+        assertEquals(listOf(1L, 2L), events.stored.value.map { it.id })
+
+        viewModel.deleteEvent(1)
+        runCurrent()
+        assertEquals(listOf(2L), events.stored.value.map { it.id })
+        assertFalse(File(folder.root, "events/1").exists())
+    }
+
+    @Test
+    fun changesAreSavedToTheActiveEvent() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.createEvent()
+        runCurrent()
+        viewModel.updateSettings { it.copy(name1 = "Rita") }
+        runCurrent()
+        assertEquals("Rita", events.stored.value.single { it.id == 2L }.settings.name1)
+        assertEquals("Ana", events.stored.value.single { it.id == 1L }.settings.name1)
+    }
+
+    private fun TestScope.saveVoiceMessage() {
+        startRecording(RecordingMode.AUDIO)
+        finish()
+        viewModel.save()
+        waitSeconds(10)
+    }
+
     /** Call mode on with a question video, and a booth whose calls come at the earliest moment allowed. */
     private fun TestScope.setUpCallMode() {
         viewModel = SessionViewModel(
-            lights, voice, video, RecordingFiles(folder.root), repository, hostSettings, handset, random = LowestRandom,
+            lights, voice, video, EventStorage(folder.root), repository, events, handset, random = LowestRandom,
         )
         runCurrent()
         openHostPanel()
@@ -831,14 +918,15 @@ class SessionViewModelTest {
         }
     }
 
-    /** Keeps saved messages in a list instead of a database. */
+    /** Keeps saved messages, of every event, in a list instead of a database. */
     private class FakeRepository : RecordingRepository {
         val saved = MutableStateFlow<List<Recording>>(emptyList())
-        override val recordings = saved
 
-        override suspend fun add(mode: RecordingMode, file: File, durationSeconds: Int) {
-            val id = saved.value.size + 1L
-            saved.value = listOf(Recording(id, mode, file.name, durationSeconds, savedAt = id)) + saved.value
+        override fun recordings(eventId: Long): Flow<List<Recording>> = saved.map { all -> all.filter { it.eventId == eventId } }
+
+        override suspend fun add(eventId: Long, mode: RecordingMode, file: File, durationSeconds: Int) {
+            val id = (saved.value.maxOfOrNull { it.id } ?: 0) + 1
+            saved.value = listOf(Recording(id, eventId, mode, file.name, durationSeconds, savedAt = id)) + saved.value
         }
 
         override suspend fun delete(recording: Recording) {
@@ -846,13 +934,41 @@ class SessionViewModelTest {
         }
     }
 
-    private class FakeSettings : SettingsRepository {
-        var saved: HostSettings? = null
+    /** Keeps events in a list instead of a database. The first one appears when first asked for, as in the app. */
+    private class FakeEvents : EventRepository {
+        val stored = MutableStateFlow<List<Event>>(emptyList())
+        var activeId: Long? = null
 
-        override suspend fun load(): HostSettings = saved ?: HostSettings()
+        /** The settings last saved for the active event. */
+        val activeSettings: HostSettings? get() = stored.value.firstOrNull { it.id == activeId }?.settings
 
-        override suspend fun save(settings: HostSettings) {
-            saved = settings
+        override val summaries: Flow<List<EventSummary>> = stored.map { all -> all.map { EventSummary(it, messageCount = 0) } }
+
+        override suspend fun active(): Event {
+            stored.value.firstOrNull { it.id == activeId }?.let { return it }
+            val event = stored.value.firstOrNull() ?: Event(id = 1, createdAt = 0, settings = HostSettings()).also { stored.value += it }
+            activeId = event.id
+            return event
+        }
+
+        override suspend fun get(id: Long): Event? = stored.value.firstOrNull { it.id == id }
+
+        override suspend fun activate(id: Long) {
+            activeId = id
+        }
+
+        override suspend fun create(settings: HostSettings): Event {
+            val event = Event(id = (stored.value.maxOfOrNull { it.id } ?: 0) + 1, createdAt = 0, settings = settings)
+            stored.value += event
+            return event
+        }
+
+        override suspend fun save(event: Event) {
+            stored.value = stored.value.map { if (it.id == event.id) event else it }
+        }
+
+        override suspend fun delete(id: Long) {
+            stored.value = stored.value.filterNot { it.id == id }
         }
     }
 

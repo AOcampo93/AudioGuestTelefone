@@ -1,6 +1,7 @@
 package com.olinix.audioguest.ui.host
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,14 +30,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
+import com.olinix.audioguest.data.EventSummary
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.HostSection
@@ -46,6 +50,7 @@ import com.olinix.audioguest.settings.HostSettings
 import com.olinix.audioguest.ui.components.ConfirmDialog
 import com.olinix.audioguest.ui.components.PillButton
 import com.olinix.audioguest.ui.components.PillStyle
+import com.olinix.audioguest.ui.eventInfoOf
 import com.olinix.audioguest.ui.theme.AudioGuestTheme
 import com.olinix.audioguest.ui.theme.Charcoal
 import com.olinix.audioguest.ui.theme.Ivory
@@ -75,6 +80,7 @@ fun HostPanelScreen(
     call: HostVideoActions,
     onTestCall: () -> Unit,
     messages: MessageActions,
+    events: EventActions,
     modifier: Modifier = Modifier,
 ) {
     // Drawn above the whole panel rather than inside the scrolling section that opened it.
@@ -123,6 +129,11 @@ fun HostPanelScreen(
                             modifier = Modifier.padding(top = 40.dp),
                         )
                         HostSection.GUESTS -> GuestsSection(settings, onChange, Modifier.padding(top = 36.dp))
+                        HostSection.EVENTS -> EventsSection(
+                            actions = events,
+                            onAskDelete = { overlay = PanelOverlay.DeleteEvent(it) },
+                            modifier = Modifier.padding(top = 36.dp),
+                        )
                         HostSection.MESSAGES -> Unit
                     }
                     exitCard()
@@ -165,6 +176,18 @@ fun HostPanelScreen(
                     messages.onDelete(shown.recording.id)
                 },
             )
+            is PanelOverlay.DeleteEvent -> ConfirmDialog(
+                icon = R.drawable.ic_trash,
+                title = stringResource(R.string.host_events_delete_title, eventInfoOf(shown.summary.event.settings).headline),
+                body = pluralStringResource(R.plurals.host_events_delete_body, shown.summary.messageCount, shown.summary.messageCount),
+                keepText = stringResource(R.string.host_delete_keep),
+                confirmText = stringResource(R.string.host_delete_confirm),
+                onKeep = { overlay = null },
+                onConfirm = {
+                    overlay = null
+                    events.onDelete(shown.summary.event.id)
+                },
+            )
             is PanelOverlay.PlayMessage -> MessagePlayerOverlay(
                 recording = shown.recording,
                 file = messages.fileOf(shown.recording),
@@ -180,6 +203,7 @@ private sealed interface PanelOverlay {
     data object Exit : PanelOverlay
     data class DeleteHostVideo(val kind: HostVideo) : PanelOverlay
     data class DeleteMessage(val recording: Recording) : PanelOverlay
+    data class DeleteEvent(val summary: EventSummary) : PanelOverlay
     data class PlayMessage(val recording: Recording) : PanelOverlay
 }
 
@@ -204,15 +228,42 @@ private fun Header(event: EventInfo, section: HostSection, onSection: (HostSecti
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
-                    Text(
-                        text = event.hosts,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontSize = 28.sp,
-                        fontStyle = FontStyle.Italic,
-                        color = accent,
-                        maxLines = 1,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
+                    // The active event, with the way to the list of events.
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 6.dp)
+                            .clip(RoundedCornerShape(percent = 50))
+                            .clickable { onSection(HostSection.EVENTS) },
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = event.hosts,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontSize = 28.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = accent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        Row(
+                            modifier = Modifier
+                                .border(1.5.dp, Ivory.copy(alpha = 0.3f), RoundedCornerShape(percent = 50))
+                                .padding(horizontal = 16.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(painterResource(R.drawable.ic_calendar), contentDescription = null, tint = Ivory, modifier = Modifier.size(20.dp))
+                            Text(
+                                text = stringResource(R.string.host_events_switch),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Ivory,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
                 }
                 PillButton(text = stringResource(R.string.host_close), onClick = onClose, icon = R.drawable.ic_lock, height = 72.dp)
             }
@@ -230,7 +281,7 @@ private fun Tabs(current: HostSection, onSection: (HostSection) -> Unit) {
         modifier = Modifier.fillMaxWidth().clip(shape).background(TabTrack).padding(6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        for (section in HostSection.entries) {
+        for (section in HostSection.entries.filter { it != HostSection.EVENTS }) {
             val selected = section == current
             val color = if (selected) MaterialTheme.colorScheme.primary else Taupe
             Column(
@@ -265,6 +316,7 @@ private fun SectionHeading(section: HostSection) {
         HostSection.CALL -> R.string.host_call_title to R.string.host_call_body
         HostSection.GUESTS -> R.string.host_guests_title to R.string.host_guests_body
         HostSection.MESSAGES -> R.string.host_messages_title to R.string.host_messages_body
+        HostSection.EVENTS -> R.string.host_events_title to R.string.host_events_body
     }
     Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
         Column(Modifier.weight(1f)) {
@@ -312,6 +364,7 @@ private val HostSection.icon: Int
         HostSection.CALL -> R.drawable.ic_phone
         HostSection.GUESTS -> R.drawable.ic_guests
         HostSection.MESSAGES -> R.drawable.ic_gallery
+        HostSection.EVENTS -> R.drawable.ic_calendar
     }
 
 private val HostSection.tabLabel: Int
@@ -321,6 +374,7 @@ private val HostSection.tabLabel: Int
         HostSection.CALL -> R.string.host_tab_call
         HostSection.GUESTS -> R.string.host_tab_guests
         HostSection.MESSAGES -> R.string.host_tab_messages
+        HostSection.EVENTS -> R.string.host_events_title
     }
 
 @Preview(widthDp = 800, heightDp = 1280)
@@ -339,6 +393,7 @@ private fun HostPanelPreview() {
             call = HostVideoActions(null, null, 30, {}, {}, {}, {}),
             onTestCall = {},
             messages = MessageActions(emptyList(), { File("") }, {}),
+            events = EventActions(emptyList(), null, {}, {}, {}),
         )
     }
 }

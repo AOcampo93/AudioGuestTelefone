@@ -40,6 +40,7 @@ import com.olinix.audioguest.ui.gallery.GalleryScreen
 import com.olinix.audioguest.ui.handset.ConnectHandsetOverlay
 import com.olinix.audioguest.ui.host.HostCorner
 import com.olinix.audioguest.ui.host.HostLoginScreen
+import com.olinix.audioguest.ui.host.EventActions
 import com.olinix.audioguest.ui.host.HostPanelScreen
 import com.olinix.audioguest.ui.host.MessageActions
 import com.olinix.audioguest.ui.host.HostVideoActions
@@ -76,6 +77,8 @@ fun AudioGuestApp(
     val videoProblems by viewModel.videoProblems.collectAsStateWithLifecycle()
     val microphone by viewModel.microphone.collectAsStateWithLifecycle()
     val playerSound by viewModel.playerSound.collectAsStateWithLifecycle()
+    val eventList by viewModel.eventList.collectAsStateWithLifecycle()
+    val activeEventId by viewModel.activeEventId.collectAsStateWithLifecycle()
     val event = eventInfoOf(settings)
     val context = LocalContext.current
     // Guests only see and hear the kinds of message the host allows.
@@ -243,6 +246,13 @@ fun AudioGuestApp(
                         recordings = recordings,
                         fileOf = viewModel::fileOf,
                         onDelete = viewModel::deleteRecording,
+                    ),
+                    events = EventActions(
+                        events = eventList,
+                        activeId = activeEventId,
+                        onUse = viewModel::switchEvent,
+                        onCreate = viewModel::createEvent,
+                        onDelete = viewModel::deleteEvent,
                     ),
                 )
             }

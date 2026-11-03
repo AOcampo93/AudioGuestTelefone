@@ -268,6 +268,19 @@
     <string name="host_messages_delete_title">¿Eliminar este mensaje?</string>
     <string name="host_messages_delete_body">Se borrará de la tablet y no podrás recuperarlo.</string>
 
+    <string name="host_events_title">Eventos</string>
+    <string name="host_events_body">Cada evento guarda su configuración y sus mensajes por separado.</string>
+    <string name="host_events_switch">Cambiar evento</string>
+    <string name="host_events_new">Nuevo evento</string>
+    <string name="host_events_active">Activo</string>
+    <string name="host_events_use">Usar</string>
+    <string name="host_events_delete">Eliminar evento</string>
+    <string name="host_events_delete_title">¿Eliminar «%1$s»?</string>
+    <plurals name="host_events_delete_body">
+        <item quantity="one">Se borrará de la tablet junto con %1$d mensaje y sus videos. Expórtalo antes si quieres conservarlo.</item>
+        <item quantity="other">Se borrará de la tablet junto con %1$d mensajes y sus videos. Expórtalo antes si quieres conservarlos.</item>
+    </plurals>
+
     <string name="host_exit_title">Salir de la app</string>
     <string name="host_exit_body">Quita la fijación y cierra la app. Para volver al kiosco, ábrela desde su icono.</string>
     <string name="host_exit">Salir</string>

@@ -5,8 +5,8 @@ import java.io.File
 /** What the guest leaves. */
 enum class RecordingMode { AUDIO, VIDEO }
 
-/** The parts of the host panel, in the order of its tabs. */
-enum class HostSection { EVENT, WELCOME, CALL, GUESTS, MESSAGES }
+/** The parts of the host panel, in the order of its tabs. [EVENTS], the list of events, opens from the header instead. */
+enum class HostSection { EVENT, WELCOME, CALL, GUESTS, MESSAGES, EVENTS }
 
 /** Why a session ended on the error screen. */
 enum class ErrorReason { MICROPHONE_UNAVAILABLE, CAMERA_UNAVAILABLE, RECORDING_FAILED }

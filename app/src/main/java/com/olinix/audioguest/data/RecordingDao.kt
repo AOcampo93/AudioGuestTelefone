@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface RecordingDao {
 
-    /** Newest first, the order the gallery shows. Emits again after every insert. */
-    @Query("SELECT * FROM recordings ORDER BY savedAt DESC, id DESC")
-    fun observeAll(): Flow<List<Recording>>
+    /** One event's messages, newest first, the order the gallery shows. Emits again after every change. */
+    @Query("SELECT * FROM recordings WHERE eventId = :eventId ORDER BY savedAt DESC, id DESC")
+    fun observe(eventId: Long): Flow<List<Recording>>
 
     @Insert
     suspend fun insert(recording: Recording): Long

@@ -230,6 +230,19 @@
     <string name="host_messages_close">Fechar</string>
     <string name="host_messages_delete_title">Excluir esta mensagem?</string>
     <string name="host_messages_delete_body">Ela será apagada do tablet e não poderá ser recuperada.</string>
+    <string name="host_events_title">Eventos</string>
+    <string name="host_events_body">Cada evento guarda a sua configuração e as suas mensagens em separado.</string>
+    <string name="host_events_switch">Mudar de evento</string>
+    <string name="host_events_new">Novo evento</string>
+    <string name="host_events_active">Ativo</string>
+    <string name="host_events_use">Usar</string>
+    <string name="host_events_delete">Eliminar evento</string>
+    <string name="host_events_delete_title">Eliminar «%1$s»?</string>
+    <plurals name="host_events_delete_body">
+        <item quantity="one">Será apagado do tablet com %1$d mensagem e os seus vídeos. Exporte-o antes se o quiser guardar.</item>
+        <item quantity="many">Será apagado do tablet com %1$d mensagens e os seus vídeos. Exporte-o antes se o quiser guardar.</item>
+        <item quantity="other">Será apagado do tablet com %1$d mensagens e os seus vídeos. Exporte-o antes se o quiser guardar.</item>
+    </plurals>
     <string name="host_exit_title">Sair do app</string>
     <string name="host_exit_body">Desafixa e fecha o app. Para voltar ao quiosque, abra-o pelo ícone.</string>
     <string name="host_exit">Sair</string>

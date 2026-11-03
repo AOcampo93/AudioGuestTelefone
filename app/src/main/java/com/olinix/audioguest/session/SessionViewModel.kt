@@ -2,17 +2,21 @@ package com.olinix.audioguest.session
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.olinix.audioguest.audio.EventStorage
 import com.olinix.audioguest.audio.MessageRecorder
 import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.RecordingFiles
 import com.olinix.audioguest.audio.SoundOutput
+import com.olinix.audioguest.data.Event
+import com.olinix.audioguest.data.EventRepository
+import com.olinix.audioguest.data.EventSummary
 import com.olinix.audioguest.data.Recording
 import com.olinix.audioguest.data.RecordingRepository
 import com.olinix.audioguest.lights.LightController
 import com.olinix.audioguest.lights.LightScene
 import com.olinix.audioguest.lights.lightSceneFor
 import com.olinix.audioguest.settings.HostSettings
-import com.olinix.audioguest.settings.SettingsRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -21,22 +25,27 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
+import java.time.LocalDate
 import kotlin.random.Random
 
 /**
  * The guest session state machine. Screens call the event functions below;
  * every change goes through [moveTo], which also drives the lights.
+ * Everything happens inside the active event: its settings, its messages and its videos.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class SessionViewModel(
     private val lights: LightController,
     private val voiceRecorder: MessageRecorder,
     private val videoRecorder: MessageRecorder,
-    private val files: RecordingFiles,
+    private val storage: EventStorage,
     private val repository: RecordingRepository,
-    private val hostSettings: SettingsRepository,
+    private val events: EventRepository,
     /** Whether the handset is plugged in, updated as it changes. */
     handsetConnected: Flow<Boolean>,
     private val config: SessionConfig = SessionConfig(),
@@ -47,21 +56,35 @@ class SessionViewModel(
     private val _state = MutableStateFlow<SessionState>(SessionState.Idle)
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
-    /** Saved messages, newest first. Loaded right away so the gallery opens already filled. */
-    val recordings: StateFlow<List<Recording>> =
-        repository.recordings.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    /** The event the booth records into, once loaded. */
+    private var activeEvent: Event? = null
+    private val _activeEventId = MutableStateFlow<Long?>(null)
+
+    /** Which event is active, for the panel's list. */
+    val activeEventId: StateFlow<Long?> = _activeEventId.asStateFlow()
+
+    /** The active event's folders. Set as soon as the event loads, before anyone can record. */
+    private lateinit var files: RecordingFiles
+
+    /** The active event's saved messages, newest first. Loaded right away so the gallery opens already filled. */
+    val recordings: StateFlow<List<Recording>> = _activeEventId.filterNotNull()
+        .flatMapLatest { id -> repository.recordings(id) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Every event, newest first, for the panel. */
+    val eventList: StateFlow<List<EventSummary>> = events.summaries.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _settings = MutableStateFlow(HostSettings())
 
     /**
-     * What the host set up in the panel. Changes apply here at once and are saved in the
-     * background, so text fields never wait for the disk.
+     * What the host set up in the panel for the active event. Changes apply here at once and are
+     * saved in the background, so text fields never wait for the disk.
      */
     val settings: StateFlow<HostSettings> = _settings.asStateFlow()
 
     private val _settingsLoaded = MutableStateFlow(false)
 
-    /** False until the saved settings replace the defaults, so the app does not flash the wrong language. */
+    /** False until the active event replaces the defaults, so the app does not flash the wrong language. */
     val settingsLoaded: StateFlow<Boolean> = _settingsLoaded.asStateFlow()
 
     private val _handsetMissing = MutableStateFlow(false)
@@ -101,9 +124,7 @@ class SessionViewModel(
 
     /** Bumped each time the host replaces a video, so its frame reloads. */
     private var hostVideoVersion = 0
-    private val _hostVideos = MutableStateFlow(
-        HostVideo.entries.mapNotNull { kind -> files.hostVideo(kind).takeIf { it.exists() }?.let { kind to HostVideoFile(it, hostVideoVersion) } }.toMap()
-    )
+    private val _hostVideos = MutableStateFlow<Map<HostVideo, HostVideoFile>>(emptyMap())
 
     /** The host's welcome and call videos that exist on the tablet. */
     val hostVideos: StateFlow<Map<HostVideo, HostVideoFile>> = _hostVideos.asStateFlow()
@@ -117,21 +138,14 @@ class SessionViewModel(
     private var callJob: Job? = null
 
     init {
-        files.clearPending()
-        viewModelScope.launch {
-            _settings.value = hostSettings.load()
-            _settingsLoaded.value = true
-            // Show mode may be on, and its countdown starts from the invitation.
-            restartInactivityTimer()
-            scheduleCall()
-        }
+        viewModelScope.launch { useEvent(events.active()) }
         moveTo(SessionState.Idle)
         viewModelScope.launch { handsetConnected.collect(::onHandsetChanged) }
     }
 
     /** Idle → Menu. In show mode a touch also stops the message playing and starts a session. */
     fun start() {
-        if (!showsInvitation(_state.value)) return
+        if (!showsInvitation(_state.value) || !_settingsLoaded.value) return
         timerJob?.cancel()
         _microphone.value = Microphone.HANDSET
         _playerSound.value = SoundOutput.HANDSET
@@ -242,8 +256,9 @@ class SessionViewModel(
         }
         val kept = files.keep(review.file)
         val shareFile = kept.takeIf { _settings.value.allowSharing }
+        val eventId = activeEvent?.id ?: return
         runTimer {
-            repository.add(review.mode, kept, review.durationSeconds)
+            repository.add(eventId, review.mode, kept, review.durationSeconds)
             thankGuest(if (shareFile != null) config.savedSecondsWithSharing else config.savedSeconds, shareFile)
         }
     }
@@ -301,7 +316,7 @@ class SessionViewModel(
 
     /** The host held the hidden corner of the invitation. */
     fun openHostLogin() {
-        if (_state.value != SessionState.Idle) return
+        if (_state.value != SessionState.Idle || !_settingsLoaded.value) return
         typedPin = ""
         moveTo(SessionState.HostLogin())
     }
@@ -383,6 +398,37 @@ class SessionViewModel(
         }
     }
 
+    /** "Usar" in the panel's list of events: the booth records into that one from now on. */
+    fun switchEvent(eventId: Long) {
+        if (_state.value !is SessionState.HostPanel || eventId == activeEvent?.id) return
+        viewModelScope.launch {
+            val event = events.get(eventId) ?: return@launch
+            events.activate(eventId)
+            useEvent(event)
+        }
+    }
+
+    /** "Novo evento": created from the active one's way of working, then opened at its names and date. */
+    fun createEvent() {
+        if (_state.value !is SessionState.HostPanel) return
+        viewModelScope.launch {
+            val event = events.create(_settings.value.forNewEvent(LocalDate.now()))
+            events.activate(event.id)
+            useEvent(event)
+            moveTo(SessionState.HostPanel(HostSection.EVENT))
+        }
+    }
+
+    /** Deletes a past event with its messages and videos, once the host confirmed. The active one cannot go. */
+    fun deleteEvent(eventId: Long) {
+        if (_state.value !is SessionState.HostPanel || eventId == activeEvent?.id) return
+        viewModelScope.launch {
+            events.delete(eventId)
+            storage.delete(eventId)
+        }
+        restartInactivityTimer()
+    }
+
     /** "Eliminar" in the panel's list of messages, once the host confirmed. Its file goes too. */
     fun deleteRecording(recordingId: Long) {
         if (_state.value !is SessionState.HostPanel) return
@@ -412,11 +458,34 @@ class SessionViewModel(
         RecordingMode.VIDEO -> videoRecorder
     }
 
+    /**
+     * Makes [event] the one the booth works for: its settings, folders and videos. Show mode and
+     * call mode start over with its own settings.
+     */
+    private fun useEvent(event: Event) {
+        activeEvent = event
+        files = storage.filesFor(event.id)
+        // Leftovers of a session that was interrupted (app closed, power cut).
+        files.clearPending()
+        _settings.value = event.settings
+        hostVideoVersion++
+        _hostVideos.value = HostVideo.entries
+            .mapNotNull { kind -> files.hostVideo(kind).takeIf { it.exists() }?.let { kind to HostVideoFile(it, hostVideoVersion) } }
+            .toMap()
+        _videoProblems.value = emptyMap()
+        _activeEventId.value = event.id
+        _settingsLoaded.value = true
+        restartInactivityTimer()
+        scheduleCall()
+    }
+
     private fun changeSettings(change: (HostSettings) -> HostSettings) {
+        val event = activeEvent ?: return
         val previous = _settings.value
         val updated = change(previous)
         _settings.value = updated
-        viewModelScope.launch { hostSettings.save(updated) }
+        activeEvent = event.copy(settings = updated)
+        viewModelScope.launch { events.save(event.copy(settings = updated)) }
         if (updated.callMode != previous.callMode || updated.callEveryMinutes != previous.callEveryMinutes) scheduleCall()
     }
 

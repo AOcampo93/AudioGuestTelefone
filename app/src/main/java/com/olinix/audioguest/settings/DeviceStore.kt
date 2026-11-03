@@ -6,65 +6,34 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import java.time.LocalDate
-
-/** The host's settings. The session talks to this interface, so tests can keep them in memory. */
-interface SettingsRepository {
-
-    /** What is saved now, or the defaults the first time. */
-    suspend fun load(): HostSettings
-
-    suspend fun save(settings: HostSettings)
-}
 
 private val Context.hostSettings: DataStore<Preferences> by preferencesDataStore(name = "host_settings")
 
-/** Keeps the settings in a small key-value file on the tablet, so they survive restarts. */
-class StoredSettingsRepository(context: Context) : SettingsRepository {
+/**
+ * Small values that belong to the tablet rather than to one event: which event is active.
+ * The same file holds the panel's settings from before events existed, read once to create the first event.
+ */
+class DeviceStore(context: Context) {
 
     private val store = context.applicationContext.hostSettings
 
-    private val stored: Flow<HostSettings> = store.data.map { it.toSettings() }
+    suspend fun activeEventId(): Long? = store.data.first()[ACTIVE_EVENT]
 
-    override suspend fun load(): HostSettings = stored.first()
-
-    override suspend fun save(settings: HostSettings) {
-        store.edit { prefs ->
-            prefs[TYPE] = settings.type.name
-            prefs[NAME_1] = settings.name1
-            prefs[NAME_2] = settings.name2
-            prefs[FAMILY] = settings.family
-            prefs[BIRTHDAY_NAME] = settings.birthdayName
-            if (settings.birthdayAge != null) prefs[BIRTHDAY_AGE] = settings.birthdayAge else prefs.remove(BIRTHDAY_AGE)
-            prefs[COMPANY_EVENT] = settings.companyEvent
-            prefs[COMPANY] = settings.company
-            prefs[OTHER_TITLE] = settings.otherTitle
-            prefs[OTHER_HOSTS] = settings.otherHosts
-            prefs[DATE] = settings.date.toString()
-            prefs[ACCENT] = settings.accent.name
-            prefs[WELCOME_VIDEO] = settings.welcomeVideo
-            prefs[WELCOME_SOUND] = settings.welcomeSound.name
-            prefs[LANGUAGE] = settings.language.name
-            prefs[ALLOWED] = settings.allowed.name
-            prefs[SHOW_MESSAGES] = settings.showMessages
-            prefs[ALLOW_SHARING] = settings.allowSharing
-            prefs[SHOW_MODE] = settings.showMode
-            prefs[SHOW_AFTER] = settings.showAfterSeconds
-            prefs[CALL_MODE] = settings.callMode
-            prefs[CALL_EVERY] = settings.callEveryMinutes
-            prefs[CALL_ANSWER] = settings.callAnswer.name
-        }
+    suspend fun setActiveEventId(id: Long) {
+        store.edit { it[ACTIVE_EVENT] = id }
     }
 
-    private fun Preferences.toSettings(): HostSettings {
+    /** The settings saved before events existed, or null if the panel was never used. */
+    suspend fun legacySettings(): HostSettings? = store.data.first().toSettings()
+
+    private fun Preferences.toSettings(): HostSettings? {
+        if (this[TYPE] == null) return null
         val defaults = HostSettings()
-        // Saved before any setting existed: everything keeps its default, including the age.
-        if (this[TYPE] == null) return defaults
         return HostSettings(
             type = enumOr(this[TYPE], defaults.type),
             name1 = this[NAME_1] ?: defaults.name1,
@@ -96,6 +65,7 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
         enumValues<T>().firstOrNull { it.name == name } ?: fallback
 
     private companion object {
+        val ACTIVE_EVENT = longPreferencesKey("active_event")
         val TYPE = stringPreferencesKey("type")
         val NAME_1 = stringPreferencesKey("name1")
         val NAME_2 = stringPreferencesKey("name2")

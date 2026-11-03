@@ -332,9 +332,9 @@ private fun EmptyGallery(onLeaveMessage: () -> Unit, modifier: Modifier = Modifi
 }
 
 private val PreviewRecordings = listOf(
-    Recording(id = 1, mode = RecordingMode.AUDIO, fileName = "", durationSeconds = 75, savedAt = 1_781_466_120_000),
-    Recording(id = 2, mode = RecordingMode.VIDEO, fileName = "", durationSeconds = 52, savedAt = 1_781_465_880_000),
-    Recording(id = 3, mode = RecordingMode.AUDIO, fileName = "", durationSeconds = 123, savedAt = 1_781_464_800_000),
+    Recording(id = 1, eventId = 1, mode = RecordingMode.AUDIO, fileName = "", durationSeconds = 75, savedAt = 1_781_466_120_000),
+    Recording(id = 2, eventId = 1, mode = RecordingMode.VIDEO, fileName = "", durationSeconds = 52, savedAt = 1_781_465_880_000),
+    Recording(id = 3, eventId = 1, mode = RecordingMode.AUDIO, fileName = "", durationSeconds = 123, savedAt = 1_781_464_800_000),
 )
 
 @Preview(widthDp = 800, heightDp = 1280)

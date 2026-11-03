@@ -75,6 +75,23 @@ data class HostSettings(
     /** Changing the type also brings back that type's default color. */
     fun withType(newType: EventType): HostSettings = copy(type = newType, accent = newType.defaultAccent)
 
+    /**
+     * A new event keeps how the booth behaves here (language, allowed messages, show and call
+     * timing) but starts with its own names on [date], and with no welcome or question video yet.
+     */
+    fun forNewEvent(date: LocalDate): HostSettings = HostSettings(
+        date = date,
+        welcomeSound = welcomeSound,
+        language = language,
+        allowed = allowed,
+        showMessages = showMessages,
+        allowSharing = allowSharing,
+        showMode = showMode,
+        showAfterSeconds = showAfterSeconds,
+        callEveryMinutes = callEveryMinutes,
+        callAnswer = callAnswer,
+    )
+
     /** The big line of the invitation: the couple, the family, the person or the organizer. */
     val hosts: String
         get() = when (type) {

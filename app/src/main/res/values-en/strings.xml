@@ -226,6 +226,18 @@
     <string name="host_messages_close">Close</string>
     <string name="host_messages_delete_title">Delete this message?</string>
     <string name="host_messages_delete_body">It will be removed from the tablet and cannot be recovered.</string>
+    <string name="host_events_title">Events</string>
+    <string name="host_events_body">Each event keeps its own setup and messages apart.</string>
+    <string name="host_events_switch">Switch event</string>
+    <string name="host_events_new">New event</string>
+    <string name="host_events_active">Active</string>
+    <string name="host_events_use">Use</string>
+    <string name="host_events_delete">Delete event</string>
+    <string name="host_events_delete_title">Delete “%1$s”?</string>
+    <plurals name="host_events_delete_body">
+        <item quantity="one">It will be removed from the tablet with its %1$d message and videos. Export it first to keep it.</item>
+        <item quantity="other">It will be removed from the tablet with its %1$d messages and videos. Export it first to keep it.</item>
+    </plurals>
     <string name="host_exit_title">Exit the app</string>
     <string name="host_exit_body">Unpins and closes the app. To return to the kiosk, open it from its icon.</string>
     <string name="host_exit">Exit</string>
