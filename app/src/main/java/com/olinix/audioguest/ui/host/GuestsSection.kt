@@ -73,6 +73,15 @@ fun GuestsSection(
 
         PanelCard {
             PanelCardRow(
+                title = stringResource(R.string.host_sharing),
+                body = stringResource(R.string.host_sharing_body),
+            ) {
+                PanelSwitch(checked = settings.allowSharing, onCheckedChange = { on -> onChange { it.copy(allowSharing = on) } })
+            }
+        }
+
+        PanelCard {
+            PanelCardRow(
                 title = stringResource(R.string.host_show_mode),
                 body = stringResource(R.string.host_show_mode_body),
             ) {

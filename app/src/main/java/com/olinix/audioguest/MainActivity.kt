@@ -116,6 +116,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         keepPinned()
+        session.onAppResumed()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        session.onAppPaused()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {

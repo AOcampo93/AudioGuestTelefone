@@ -46,8 +46,8 @@ sealed class SessionState {
     /** Play back before saving: Save · Retry · Discard. [file] is still pending until saved. */
     data class Review(val mode: RecordingMode, val durationSeconds: Int, val file: File, val welcome: Boolean = false) : SessionState()
 
-    /** "¡Gracias!" and automatic return to Idle. */
-    data class Saved(val secondsLeft: Int, val totalSeconds: Int) : SessionState()
+    /** "¡Gracias!" and automatic return to Idle. [shareFile] is the saved message, when the host lets guests share it. */
+    data class Saved(val secondsLeft: Int, val totalSeconds: Int, val shareFile: File? = null) : SessionState()
 
     /** "Mensajes del evento", showing the messages under one tab. */
     data class Gallery(val filter: GalleryFilter = GalleryFilter.ALL) : SessionState()

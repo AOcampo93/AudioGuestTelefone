@@ -59,6 +59,8 @@
     <string name="saved_for">Tu mensaje se guardó para %1$s</string>
     <string name="saved_hang_up">Vuelve a colgar el auricular</string>
     <string name="saved_back_in">Volviendo al inicio en %1$d s</string>
+    <string name="saved_share">Compartir mi mensaje</string>
+    <string name="share_subject">Mi mensaje para %1$s</string>
 
     <!-- Gallery -->
     <string name="gallery_title">Mensajes del evento</string>
@@ -134,7 +136,7 @@
     <string name="host_welcome_title" translatable="false">Video de bienvenida</string>
     <string name="host_welcome_body" translatable="false">Un saludo en video antes de que los invitados graben.</string>
     <string name="host_guests_title" translatable="false">Experiencia del invitado</string>
-    <string name="host_guests_body" translatable="false">Idioma, mensajes permitidos, galería y Modo Show.</string>
+    <string name="host_guests_body" translatable="false">Idioma, mensajes permitidos, galería, compartir y Modo Show.</string>
 
     <string name="host_event_type" translatable="false">Tipo de evento</string>
     <string name="host_type_wedding" translatable="false">Boda</string>
@@ -205,6 +207,8 @@
     <string name="host_allowed_body" translatable="false">El menú, «Ver grabaciones» y el Modo Show solo muestran los permitidos. Los demás no se borran: solo dejan de verse en la tablet.</string>
     <string name="host_show_messages" translatable="false">Mostrar los mensajes a los invitados</string>
     <string name="host_show_messages_body" translatable="false">Activa «Ver grabaciones» en el menú. Si lo apagas, los mensajes se guardan pero no se ven en la tablet.</string>
+    <string name="host_sharing" translatable="false">Permitir compartir</string>
+    <string name="host_sharing_body" translatable="false">En «¡Gracias!», el invitado puede enviarse su mensaje por Bluetooth, Quick Share o correo. Usa las apps y cuentas de esta tablet.</string>
     <string name="host_show_mode" translatable="false">Modo Show</string>
     <string name="host_show_mode_body" translatable="false">Cuando nadie usa la cabina, reproduce al azar mensajes guardados para animar a otros a participar.</string>
     <string name="host_show_after" translatable="false">Empezar tras</string>

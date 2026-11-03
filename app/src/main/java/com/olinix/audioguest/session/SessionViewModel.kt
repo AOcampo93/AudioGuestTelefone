@@ -93,6 +93,9 @@ class SessionViewModel(
     /** The camera opening during a video countdown. */
     private var preparing: Job? = null
 
+    /** The guest opened the share sheet from "¡Gracias!", which waits for them to come back. */
+    private var sharing = false
+
     /** Digits typed on the host PIN pad. Kept here, not in the state, so the screen never holds the PIN. */
     private var typedPin = ""
 
@@ -206,14 +209,38 @@ class SessionViewModel(
             return
         }
         val kept = files.keep(review.file)
+        val shareFile = kept.takeIf { _settings.value.allowSharing }
         runTimer {
             repository.add(review.mode, kept, review.durationSeconds)
-            for (left in config.savedSeconds downTo 1) {
-                moveTo(SessionState.Saved(secondsLeft = left, totalSeconds = config.savedSeconds))
-                delay(ONE_SECOND)
-            }
-            moveTo(SessionState.Idle)
+            thankGuest(if (shareFile != null) config.savedSecondsWithSharing else config.savedSeconds, shareFile)
         }
+    }
+
+    /** "Compartir mi mensaje": the countdown stops while the guest is in Android's share sheet. */
+    fun pauseForSharing() {
+        val saved = _state.value as? SessionState.Saved ?: return
+        if (saved.shareFile == null) return
+        sharing = true
+        // Normally cancelled by onAppPaused. If the sheet never opens (Android may refuse while
+        // the app is pinned), the countdown carries on instead of waiting forever.
+        runTimer {
+            delay(config.shareOpenSeconds * ONE_SECOND)
+            sharing = false
+            thankGuest(saved.totalSeconds, saved.shareFile)
+        }
+    }
+
+    /** Another screen covered the app, such as the share sheet. */
+    fun onAppPaused() {
+        if (sharing) timerJob?.cancel()
+    }
+
+    /** The app is in front again. After sharing, "¡Gracias!" counts down from the start. */
+    fun onAppResumed() {
+        if (!sharing) return
+        sharing = false
+        val saved = _state.value as? SessionState.Saved ?: return
+        runTimer { thankGuest(saved.totalSeconds, saved.shareFile) }
     }
 
     fun retry() {
@@ -353,6 +380,15 @@ class SessionViewModel(
         welcomeVersion++
         _welcomeVideo.value = WelcomeVideo(files.welcomeVideo, welcomeVersion)
         changeSettings { it.copy(welcomeVideo = true) }
+    }
+
+    /** "¡Gracias!" for [seconds], then back to the invitation. */
+    private suspend fun thankGuest(seconds: Int, shareFile: File?) {
+        for (left in seconds downTo 1) {
+            moveTo(SessionState.Saved(secondsLeft = left, totalSeconds = seconds, shareFile = shareFile))
+            delay(ONE_SECOND)
+        }
+        moveTo(SessionState.Idle)
     }
 
     private fun startCountdown(mode: RecordingMode, welcome: Boolean = false) {

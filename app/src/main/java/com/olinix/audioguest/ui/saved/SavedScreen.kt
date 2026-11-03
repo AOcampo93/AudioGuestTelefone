@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import com.olinix.audioguest.R
 import com.olinix.audioguest.session.EventInfo
 import com.olinix.audioguest.session.SessionState
+import com.olinix.audioguest.ui.components.PillButton
+import com.olinix.audioguest.ui.components.PillStyle
 import com.olinix.audioguest.ui.components.ProgressBar
 import com.olinix.audioguest.ui.components.screenBackground
 import com.olinix.audioguest.ui.theme.AudioGuestTheme
@@ -40,9 +42,12 @@ import com.olinix.audioguest.ui.theme.IvorySoft
 import com.olinix.audioguest.ui.theme.Sand
 import com.olinix.audioguest.ui.theme.Taupe
 
-/** Screen 9 · "¡Gracias!" with a gold check, then back to Idle on its own. */
+/**
+ * Screen 9 · "¡Gracias!" with a gold check, then back to Idle on its own.
+ * When the host allows it, "Compartir mi mensaje" opens Android's share sheet.
+ */
 @Composable
-fun SavedScreen(state: SessionState.Saved, event: EventInfo, modifier: Modifier = Modifier) {
+fun SavedScreen(state: SessionState.Saved, event: EventInfo, modifier: Modifier = Modifier, onShare: () -> Unit = {}) {
     val accent = MaterialTheme.colorScheme.primary
     val pop = remember { Animatable(0.55f) }
     LaunchedEffect(Unit) {
@@ -86,6 +91,17 @@ fun SavedScreen(state: SessionState.Saved, event: EventInfo, modifier: Modifier 
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(top = 24.dp),
             )
+            if (state.shareFile != null) {
+                PillButton(
+                    text = stringResource(R.string.saved_share),
+                    onClick = onShare,
+                    style = PillStyle.OUTLINE,
+                    icon = R.drawable.ic_share,
+                    borderColor = accent.copy(alpha = 0.6f),
+                    contentColor = accent,
+                    modifier = Modifier.padding(top = 56.dp),
+                )
+            }
         }
 
         Column(

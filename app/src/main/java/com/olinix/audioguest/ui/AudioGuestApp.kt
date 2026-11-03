@@ -20,8 +20,10 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.olinix.audioguest.R
 import com.olinix.audioguest.audio.Microphone
 import com.olinix.audioguest.audio.copyVideo
 import com.olinix.audioguest.camera.CameraFeed
@@ -46,6 +48,7 @@ import com.olinix.audioguest.ui.player.PlayerScreen
 import com.olinix.audioguest.ui.recording.RecordingScreen
 import com.olinix.audioguest.ui.review.ReviewScreen
 import com.olinix.audioguest.ui.saved.SavedScreen
+import com.olinix.audioguest.ui.saved.shareMessage
 import com.olinix.audioguest.ui.show.ShowScreen
 import com.olinix.audioguest.ui.welcome.WelcomeScreen
 import com.olinix.audioguest.ui.theme.Charcoal
@@ -156,7 +159,16 @@ fun AudioGuestApp(
                     onDiscard = viewModel::discard,
                     onPlayingChange = viewModel::onPlaybackChanged,
                 )
-                is SessionState.Saved -> SavedScreen(current, event)
+                is SessionState.Saved -> {
+                    val subject = stringResource(R.string.share_subject, event.hosts)
+                    val title = stringResource(R.string.saved_share)
+                    SavedScreen(current, event, onShare = {
+                        current.shareFile?.let { file ->
+                            viewModel.pauseForSharing()
+                            shareMessage(context, file, subject, title)
+                        }
+                    })
+                }
                 is SessionState.Gallery -> GalleryScreen(
                     event = event,
                     recordings = guestRecordings,

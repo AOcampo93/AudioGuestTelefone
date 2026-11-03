@@ -41,6 +41,8 @@
     <string name="saved_for">Your message was saved for %1$s</string>
     <string name="saved_hang_up">Please hang up the handset</string>
     <string name="saved_back_in">Back to start in %1$d s</string>
+    <string name="saved_share">Share my message</string>
+    <string name="share_subject">My message for %1$s</string>
     <string name="gallery_title">Event messages</string>
     <string name="gallery_tab_all">All</string>
     <string name="gallery_tab_voice">Voice</string>

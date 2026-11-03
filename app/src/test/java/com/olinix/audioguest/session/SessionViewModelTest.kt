@@ -148,7 +148,8 @@ class SessionViewModelTest {
 
         viewModel.save()
         runCurrent()
-        assertEquals(SessionState.Saved(secondsLeft = 5, totalSeconds = 5), viewModel.state.value)
+        // Sharing is allowed by default, so "¡Gracias!" offers the file and stays a little longer.
+        assertEquals(SessionState.Saved(secondsLeft = 10, totalSeconds = 10, shareFile = savedFiles().single()), viewModel.state.value)
         assertFalse(pending.exists())
         assertEquals(1, savedFiles().size)
 
@@ -156,6 +157,56 @@ class SessionViewModelTest {
         assertEquals(RecordingMode.AUDIO, saved.mode)
         assertEquals(savedFiles().single(), viewModel.fileOf(saved))
 
+        waitSeconds(10)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
+    @Test
+    fun theThanksScreenWaitsWhileTheGuestShares() = runTest(dispatcher) {
+        startRecording(RecordingMode.VIDEO)
+        finish()
+        viewModel.save()
+        waitSeconds(2)
+
+        viewModel.pauseForSharing()
+        viewModel.onAppPaused()
+        waitSeconds(120)
+        assertTrue(viewModel.state.value is SessionState.Saved)
+
+        // Back from the share sheet, the countdown starts again from the top.
+        viewModel.onAppResumed()
+        runCurrent()
+        assertEquals(10, (viewModel.state.value as SessionState.Saved).secondsLeft)
+        waitSeconds(10)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
+    @Test
+    fun aShareSheetThatNeverOpensDoesNotStopTheCountdown() = runTest(dispatcher) {
+        startRecording(RecordingMode.AUDIO)
+        finish()
+        viewModel.save()
+        runCurrent()
+
+        // Android refused to open it, so the app was never covered.
+        viewModel.pauseForSharing()
+        waitSeconds(3 + 10)
+        assertEquals(SessionState.Idle, viewModel.state.value)
+    }
+
+    @Test
+    fun withoutSharingTheThanksScreenIsShort() = runTest(dispatcher) {
+        openHostPanel()
+        viewModel.updateSettings { it.copy(allowSharing = false) }
+        viewModel.back()
+        startRecording(RecordingMode.AUDIO)
+        finish()
+        viewModel.save()
+        runCurrent()
+        assertEquals(SessionState.Saved(secondsLeft = 5, totalSeconds = 5), viewModel.state.value)
+
+        viewModel.pauseForSharing()
+        viewModel.onAppPaused()
         waitSeconds(5)
         assertEquals(SessionState.Idle, viewModel.state.value)
     }
@@ -597,7 +648,7 @@ class SessionViewModelTest {
         startRecording(RecordingMode.AUDIO)
         finish()
         viewModel.save()
-        waitSeconds(5)
+        waitSeconds(10)
         val saved = viewModel.recordings.value.single()
         assertTrue(viewModel.fileOf(saved).exists())
 

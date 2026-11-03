@@ -52,6 +52,7 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
             prefs[LANGUAGE] = settings.language.name
             prefs[ALLOWED] = settings.allowed.name
             prefs[SHOW_MESSAGES] = settings.showMessages
+            prefs[ALLOW_SHARING] = settings.allowSharing
             prefs[SHOW_MODE] = settings.showMode
             prefs[SHOW_AFTER] = settings.showAfterSeconds
         }
@@ -79,6 +80,7 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
             language = enumOr(this[LANGUAGE], defaults.language),
             allowed = enumOr(this[ALLOWED], defaults.allowed),
             showMessages = this[SHOW_MESSAGES] ?: defaults.showMessages,
+            allowSharing = this[ALLOW_SHARING] ?: defaults.allowSharing,
             showMode = this[SHOW_MODE] ?: defaults.showMode,
             showAfterSeconds = this[SHOW_AFTER] ?: defaults.showAfterSeconds,
         )
@@ -105,6 +107,7 @@ class StoredSettingsRepository(context: Context) : SettingsRepository {
         val LANGUAGE = stringPreferencesKey("language")
         val ALLOWED = stringPreferencesKey("allowed")
         val SHOW_MESSAGES = booleanPreferencesKey("show_messages")
+        val ALLOW_SHARING = booleanPreferencesKey("allow_sharing")
         val SHOW_MODE = booleanPreferencesKey("show_mode")
         val SHOW_AFTER = intPreferencesKey("show_after")
     }

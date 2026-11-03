@@ -61,6 +61,8 @@ data class HostSettings(
     val allowed: AllowedMessages = AllowedMessages.BOTH,
     /** "Ver grabaciones" in the menu. Off, messages are still saved but not shown on the tablet. */
     val showMessages: Boolean = true,
+    /** "Compartir mi mensaje" on the thanks screen, through Android's share sheet. */
+    val allowSharing: Boolean = true,
     /** Plays saved messages at random while nobody uses the booth. Needs [showMessages]. */
     val showMode: Boolean = false,
     val showAfterSeconds: Int = 60,

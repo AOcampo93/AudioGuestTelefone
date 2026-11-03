@@ -41,6 +41,8 @@
     <string name="saved_for">Sua mensagem foi salva para %1$s</string>
     <string name="saved_hang_up">Coloque o fone de volta no lugar</string>
     <string name="saved_back_in">Voltando ao início em %1$d s</string>
+    <string name="saved_share">Compartilhar minha mensagem</string>
+    <string name="share_subject">Minha mensagem para %1$s</string>
     <string name="gallery_title">Mensagens do evento</string>
     <string name="gallery_tab_all">Todas</string>
     <string name="gallery_tab_voice">Voz</string>
